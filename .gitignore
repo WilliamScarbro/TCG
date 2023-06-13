@@ -1,3 +1,4 @@
 dist-newstyle/
 .markdown-preview.html
-
+.vscode/
+log/
