@@ -1,0 +1,71 @@
+module CAST where
+
+data CProgram = CProgram [CStatement]
+
+-- C AST
+
+data CStatement
+  = CAssignment CIdentifier CExpr
+  -- | If CExpr [tatement] (Maybe [Statement])
+  -- | While CExpr [Statement]
+  -- | Return (Maybe CExpr)
+
+data CExpr
+  = CBinaryOp CBinaryOperator CExpr CExpr
+  | CUnaryOp CUnaryOperator CExpr
+  | Literal Literal
+  | Identifier String
+
+data CBinaryOperator
+  = CAdd
+  | CSubtract
+  | CMultiply
+  | CDivide
+  | CModulo
+--  | Equal
+--  | NotEqual
+--  | LessThan
+--  | LessThanOrEqual
+--  | GreaterThan
+--  | GreaterThanOrEqual
+--  | And
+--  | Or
+
+data CUnaryOperator
+  = CNegate
+  | CNot
+
+data Literal
+  = IntLiteral Integer
+  | FloatLiteral Double
+  | BoolLiteral Bool
+  | CharLiteral Char
+
+
+
+data COperator = CBinary CBinaryOperator | CUnary CUnaryOperator
+
+translateOp :: COperator -> String
+translateOp (CBinary op) = translateBinaryOp op
+translateOp (CUnary op) = translateUnaryOp op
+
+translateBinaryOp :: CBinaryOperator -> String
+translateBinaryOp CAdd = "+"
+translateBinaryOp CSubtract = "-"
+translateBinaryOp CMultiply = "*"
+translateBinaryOp CDivide = "/"
+translateBinaryOp CModulo = "%"
+
+translateUnaryOp :: CUnaryOperator -> String
+translateUnaryOp CNegate = "-"
+translateUnaryOp CNot = "!"
+
+translateExpr :: CExpr -> String
+translateExpr (CBinaryOp op left right) = "(" ++ translateExpr left ++ " " ++ translateOp (CBinary op) ++ " " ++ translateExpr right ++ ")"
+translateExpr (CUnaryOp op expr) = translateOp (CUnary op) ++ "(" ++ translateExpr expr ++ ")"
+translateExpr (Literal (IntLiteral i)) = show i
+translateExpr (Literal (FloatLiteral f)) = show f
+translateExpr (Literal (BoolLiteral b)) = if b then "true" else "false"
+translateExpr (Literal (CharLiteral c)) = show c
+translateExpr (Identifier s) = s
+
