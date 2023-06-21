@@ -15,11 +15,15 @@ import Data.Matrix
 
 data LinearOp a where
   LO :: (Matrix a) -> LinearOp a
+
 data Vector a where
   Vec :: (Matrix a) -> Vector a
-
+  deriving Eq
+  
 ffVec :: Integral a =>  a -> a -> (Int -> Int) -> Vector FF
 ffVec n p f = Vec (matrix (fromIntegral n) 1 (\(x,y) -> Just (Res (toInteger (f (x-1))) (toInteger p))))
+
+cannon_ffVec n p = ffVec n p id
 
 linearOp :: Integral a => a -> ((Int,Int)->b) -> LinearOp b
 linearOp n f = LO (matrix (fromIntegral n) (fromIntegral n) (\(x,y) -> f ((x-1),(y-1))))
@@ -105,12 +109,16 @@ perm :: Int -> (Int -> Int) -> LinearOp FF
 perm n f = linearOp n (\(i,j) -> if f (j)==i then Just one else Just Algebra.FField.zero)
 
 mT_perm :: Int -> Int -> Int -> Int -> Int
-mT_perm n k block x = let m = div n k in
-  let xBlock = div x block in
-  (div xBlock k) + m * (mod xBlock x) + (mod x block)
-
+mT_perm di dj dk x =
+  let
+    i = div x (dj*dk)
+    j = div (mod x (dj*dk)) dk
+    k = mod x dk in
+  (di*dk) * j + dk * i + k
+   
+  
 mT :: Int -> Int -> Int -> LinearOp FF
-mT n k block = perm n (mT_perm n k block)
+mT di dj dk = perm (di*dj*dk) (mT_perm di dj dk)
 
 mL_perm :: Int -> Int -> Int -> Int
 mL_perm n k x = let m = fromIntegral (div n k) in let ik = fromIntegral k in (div x ik) + m * (mod x ik)
@@ -152,20 +160,27 @@ phi_inv n k d b p =
           --linearOp n (\(x,y) -> if mod x m == mod y m then Just (Res (toInteger (div ((rd+(div x m)*b)*(div y m)) k)) (toInteger p)) else 0)
           linearOp n (\(x,y) -> if mod x m == mod y m then k_inv * (w_inv >>= (\z -> pow z (div ((rd+(div x m)*b)*(div y m)) k))) else 0)
 
-gamma_func :: Int -> Int -> Int -> Int -> Int -> FF
-gamma_func n d b p x = 
-  let w=nth_root b p >>= (\z -> pow z (div (b-d) n)) in
-      w >>= (\z -> pow z x)
+-- gamma
+-- extended by m to implement swapQQ
+gamma_func :: Int -> Int -> Int -> Int -> Int -> Int -> FF
+gamma_func k m d b p x = do
+  omega <- nth_root b p
+  pow omega ((div d k)*(div x m))
 
-gamma :: Int -> Int -> Int -> Int -> LinearOp FF
-gamma n d b p =
-  let call = gamma_func n d b p in
-    linearOp n (\(x,y) -> if x==y then call x else 0)
+gamma :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
+gamma k m d b p =
+  let call = gamma_func k m d b p in
+    linearOp (k*m) (\(x,y) -> if x==y then call x else 0)
 
-gamma_inv :: Int -> Int -> Int -> Int -> LinearOp FF
-gamma_inv n d b p =
-  let w=nth_root b p >>= (\z -> pow z (div (b-d) n)) in
-    linearOp n (\(x,y) -> if x==y then w >>= (\z -> pow z (b-x)) else 0)
+gamma_inv_func :: Int -> Int -> Int -> Int -> Int -> Int -> FF
+gamma_inv_func k m d b p x = do
+  omega <- nth_root b p
+  pow omega (b-(div d k)*x)
+  
+gamma_inv :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
+gamma_inv k m d b p =
+  let call = gamma_inv_func k m d b p in
+    linearOp (k*m) (\(x,y) -> if x==y then call x else 0)
 
 
 ----
@@ -177,6 +192,15 @@ extendLO :: Int -> Int -> (Int -> Maybe (LinearOp FF)) -> Maybe (LinearOp FF)
 extendLO n k f = Just (linearOp (n * k) (\(x,y) -> if div x n == div y n then (f (div x n)) >>= (\g -> get_el (mod x n) (mod y n) g) else 0))
 
 
+apply_lo_list :: Vector FF -> [LinearOp FF] -> Maybe (Vector FF)
+apply_lo_list vec (lo:lo_path) = do
+  next <- mv lo vec
+  apply_lo_list next lo_path
+apply_lo_list vec [] = Just vec
+
+combine_lo_list :: [LinearOp FF] -> Maybe (LinearOp FF)
+combine_lo_list lo_list = foldr (\cur prev -> prev >>= (\p -> mm p cur)) (Just (head lo_list)) (tail lo_list)
+
 instance Show (Int -> Maybe Kernel) where
   show f = show (f 0)
 instance Eq (Int -> Maybe Kernel) where
@@ -186,9 +210,9 @@ instance Ord (Int -> Maybe Kernel) where
 
 data Kernel
   = Phi Int Int Int Int Int -- n k d b p
-  | Gamma Int Int Int Int -- n d b p
+  | Gamma Int Int Int Int Int -- k m d b p
   | KL Int Int -- n k
-  | KT Int Int Int -- n k m
+  | KT Int Int Int -- di dj dk
   | KId Int -- n
   | Kernel_Extend Int Int (Int -> Maybe Kernel) -- n k f
   | Kernel_Repeat Int Int Kernel deriving (Show,Eq,Ord) -- n k
@@ -196,8 +220,8 @@ data Kernel
 
 sizeof :: Kernel -> Int
 sizeof (Phi n _ _ _ _) = n
-sizeof (Gamma n _ _ _) = n
-sizeof (KT n _ _) = n
+sizeof (Gamma k m _ _ _) = k*m
+sizeof (KT di dj dk) = di * dj * dk
 sizeof (KL n _) = n
 sizeof (KId n) = n
 sizeof (Kernel_Extend n _ f) = n*(squashMaybeInt (f 0) sizeof)

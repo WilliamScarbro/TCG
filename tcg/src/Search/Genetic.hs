@@ -46,7 +46,7 @@ initializePopulation specimen rand size = if size <= 0 then (logObj "ERROR INIT_
         pop <- return (popFitness (fmap (\x -> (x,0)) (fmap fst list))); -- IO [(a,fit)]
         newRand <- return (snd( last( list ))); -- StdGen
         pop_logged <- return ((logObj "InitializePopulation" list) >> pop); -- log initial population
-          return (pop_logged,newRand); } in -- IO (IO (Population,StdGen))
+        return (pop_logged,newRand); } in -- IO (IO (Population,StdGen))
     --let maybeOverIO = fmap (\(p,r) -> (return (\z -> (z,r))) <*> p ) inter in
     inter
 

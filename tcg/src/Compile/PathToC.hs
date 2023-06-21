@@ -11,7 +11,7 @@ import Algebra.PolyRings
 
 compileKersToFieldAST :: Int -> [Kernel] -> IO (Int,[String],[FieldStmt a])
 compileKersToFieldAST n kers = 
- let inputVars = ["x["++show i++"]"|i<-[0..n-1]] in
+ let inputVars = ["X["++show i++"]"|i<-[0..n-1]] in
   do -- IO
     lops <- maybeToIO "Path2C: Failed kernelToLO" (sequence (fmap kernelToLO kers))
     foldl foldKernelSeries (return (0,inputVars,[])) lops

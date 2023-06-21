@@ -15,7 +15,7 @@ import System.Environment
 
 --
 
-kt_home = (getEnv "POLYMULT_HOME") >>= (\x -> return (x++"/kernel-timer/"))
+kt_home = (getEnv "TCG_HOME") >>= (\x -> return (x++"/kernel-timer/"))
 kt_relative_path :: String -> IO String
 kt_relative_path str = kt_home >>= (\x -> return (x++str))
 
@@ -109,9 +109,10 @@ applyPerm l perm = [l!!p | p <- perm]
 
 
 checkCorrect :: Path -> FilePath -> IO (String)
-checkCorrect path fname = let written = writePath path fname in
-  let result = extractResult fname in
-    let start = path_get_start path in
+checkCorrect path fname =
+  let written = writePath path fname
+      result = extractResult fname
+      start = path_get_start path in
       written >> result >>= (\res -> return (squashMaybeString (do { end <- path_get_end path;
                                                           cor <- correctResult start;
                                                          term <- expandTerminal end;

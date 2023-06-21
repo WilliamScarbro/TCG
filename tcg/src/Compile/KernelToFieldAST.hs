@@ -12,15 +12,15 @@ data LOClass
   | Square Int (Int -> Int -> FF)
   | ITensor Int Int (LOClass) -- (LO \circledtimes I)
   | Partition Int [LOClass] -- m (size of each partition)
-  | LOId
+  | LOId Int
 
 instance Show LOClass where
   show (Diagonal n f) = "Diagonal "++show n
   show (Permutation n f) = "Permutation "++show n
   show (Square n f) = "Square "++show n
   show (ITensor n k lo) = "( "++show lo++" (ox) I_"++show k++")"
-  show (Partition m arr) = "Partition "++show arr
-  show LOId = "LOId"
+  show (Partition m arr) = "Partition "++show m++" "++show arr
+  show (LOId n) = "LOId "++show n
    
 kernelToLO :: Kernel -> Maybe LOClass
 kernelToLO (Phi n k d b p) =
@@ -28,10 +28,10 @@ kernelToLO (Phi n k d b p) =
     return (Square n (phi_func n k d b p))
   else
     return (ITensor n (div n k) (Square k (phi_func k k d b p)))
-kernelToLO (Gamma n d b p) = return (Diagonal n (gamma_func n d b p))
-kernelToLO (KT n k m) = return (Permutation n (mT_perm n k m))
+kernelToLO (Gamma k m d b p) = return (Diagonal (k*m) (gamma_func k m d b p))
+kernelToLO (KT di dj dk) = return (Permutation (di*dj*dk) (mT_perm dj di dk)) -- applies inverse permutation (swaps di dj)
 kernelToLO (KL n k) = return (Permutation n (mL_perm n k))
-kernelToLO (KId n) = return LOId
+kernelToLO (KId n) = return (LOId n)
 kernelToLO (Kernel_Extend n k f) =
     let kers = sequence (do{ -- List
       i<-[0..k-1]; -- Int
@@ -87,7 +87,11 @@ compileLOToFieldAST vc (Partition m lo_arr) vars =
   else
     (foldl foldKernelPar (return (vc,[],[])) [(lo_arr!!i,[vars!!j|j<-[i*m..(i+1)*m-1]])|i<-[0..(length lo_arr)-1]])
 
-compileLOToFieldAST vc LOId vars = return (vc,vars,[])
+compileLOToFieldAST vc (LOId n) vars =
+  if length vars /= n then
+    logObj "LO2FAST: num vars does not match Id dimensions" (length vars,n) >> return (0,[],[])
+  else
+    return (vc,vars,[])
 
 -- identity: (LO_m \ox I_k) = L^n_m (I_k \ox LO_m) L^n_k
 compileLOToFieldAST vc (ITensor n k lo) vars = do

@@ -109,7 +109,9 @@ translateCType CInt = "int"
 
 add_boiler_plate :: CProgram -> Int -> String
 add_boiler_plate cp size = let prog = translateCToStr cp in
-  "import <stdio.h>\n\
+  "#include <stdio.h>\n\
+  \#include <stdlib.h>\n\
+  \#include \"../Util.h\"\n\
   \\n\
   \void gen(int* X, int* Y){\n"++prog++"\n}\n\
   \\n\

@@ -28,19 +28,16 @@ showTuple :: Show a => [a] -> String
 showTuple t = let st = fmap show t in foldl (\x y -> (x++","++y)) (head st) (tail st)
 
 compileKernel :: Int -> Kernel -> PCC -> Maybe String
---compileKernel = undefined
 compileKernel o (Phi n k d b p) pcc = Just ("  Phi("++(showTuple [n,k,d,b,p])++","++(endXY o)++","++(endW (Phi n k d b p) pcc)++");\n")
 compileKernel o (KL n k) pcc = Just ("  LPerm("++(showTuple [n,k])++","++(endXY o)++");\n")
-compileKernel o (KT n k l) pcc = Just ("  TPerm("++(showTuple [n,k,l])++","++(endXY o)++");\n")
+compileKernel o (KT di dj dk) pcc = Just ("  TPerm("++(showTuple [di,dj,dk])++","++(endXY o)++");\n")
 compileKernel o (KId n) pcc = Nothing
-compileKernel o (Gamma n d b p) pcc = Just ("  Gamma("++(showTuple [n,d,b,p])++","++(endXY o)++","++(endW (Gamma n d b p) pcc)++");\n")
+compileKernel o (Gamma k m d b p) pcc = Just ("  Gamma("++(showTuple [k,m,d,b,p])++","++(endXY o)++","++(endW (Gamma k m d b p) pcc)++");\n")
 compileKernel o (Kernel_Repeat n k ker) pcc = Just (foldr (++) "" (foldr (++) [] (fmap maybeToList [compileKernel (o+(div n k)*i) ker pcc | i<-[0..k-1]])))
 compileKernel o (Kernel_Extend n k f) pcc = Just (foldr (++) "" (foldr (++) [] (fmap maybeToList [(f i) >>= (\ker -> compileKernel (o+(div n k)*i) ker pcc) | i<-[0..k-1]]))) 
 
 endW :: Kernel -> PCC -> String
 endW ker pcc = squashMaybeString (Map.lookup ker pcc) "Error couldn't fid kernel in PCC Map"
---endW ker pcc = squashMaybeString (do { mtup <- Map.lookup ker pcc;
---                                          (\x -> Just (snd x)) mtup }) "<Error: couldn't find kernel in PCC Map>"
 
 swap :: String
 swap = "  swap(X,Y);\n"
@@ -62,7 +59,7 @@ reqPCC (Phi _ _ _ _ _) = True
 reqPCC (KT _ _ _) = False
 reqPCC (KL _ _) = False
 reqPCC (KId _) = False
-reqPCC (Gamma _ _ _ _) = True
+reqPCC (Gamma _ _ _ _ _) = True
 reqPCC (Kernel_Repeat _ _ k) = reqPCC k
 reqPCC (Kernel_Extend _ _ f) = squashMaybeBool (f 0) reqPCC
 
@@ -73,14 +70,14 @@ listLeafs (Phi n k d b p) = [Phi n k d b p]
 listLeafs (KL _ _) = []
 listLeafs (KT _ _ _) = []
 listLeafs (KId _) = []
-listLeafs (Gamma n d b p) = [Gamma n d b p]
+listLeafs (Gamma k m d b p) = [Gamma k m d b p]
 listLeafs (Kernel_Repeat n k ker) = listLeafs ker
 listLeafs (Kernel_Extend n k f) = let maybeKernels = [f i >>= (\ker -> Just (listLeafs ker)) | i<-[0..k-1]] in
   foldl (++) [] (foldl (++) [] (fmap maybeToList maybeKernels))
 
 precompute :: Kernel -> String -> String
 precompute (Phi n k d b p) pcc_name = "  Phi_W(w,"++showTuple [d,b,k,p]++","++pcc_name++");\n"
-precompute (Gamma n d b p) pcc_name = "  Gamma_W(w,"++showTuple [n,d,b,p]++","++pcc_name++");\n"
+precompute (Gamma k m d b p) pcc_name = "  Gamma_W(w,"++showTuple [k,m,d,b,p]++","++pcc_name++");\n"
 --precompute (Kernel_Repeat n k ker) pcc_name = precompute ker pcc_name
 --precompute (Kernel_Extend n k f) pcc_name = foldr (++) "" [precompute (f i) pcc_name | i<-[0..k]]
 --
@@ -92,7 +89,7 @@ associateKernels p = let rp = nub (filter reqPCC (foldr (++) [] (fmap listLeafs 
 --
 associateKernel :: Int -> Kernel -> String
 associateKernel c (Phi n k d b p) = "W"++show c
-associateKernel c (Gamma n d b p) = "W"++show c
+associateKernel c (Gamma k m d b p) = "W"++show c
 associateKernel c _ = "Error: Kernel does not need PCC"
 
 --
@@ -169,7 +166,7 @@ compile (n,b,p) name path = let filtered_path = filter (\k -> not (is_identity k
 
 is_identity :: Kernel -> Bool
 is_identity (Phi _ _ _ _ _) = False
-is_identity (Gamma _ _ _ _) = False
+is_identity (Gamma _ _ _ _ _) = False
 is_identity (KL _ _) = False
 is_identity (KT _ _ _) = False
 is_identity (KId _) = True

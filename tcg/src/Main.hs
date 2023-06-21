@@ -41,7 +41,7 @@ new_hope_logn = (8,12289)
 kyber_params_logn = (8,7681)
 
 passEnvVars :: IO ()
-passEnvVars = let vars=["POLYMULT_HOME","TIMER_ITERS","MATCH_CONTEXT"] in
+passEnvVars = let vars=["TCG_HOME","TIMER_ITERS","MATCH_CONTEXT"] in
   sequence (fmap (\v -> getEnv v >>= setEnv v >> logIO ("MAIN Set EnvVar "++v) (getEnv v)) vars) >> return ()
                    
 -- params -> size -> gens

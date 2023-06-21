@@ -24,22 +24,28 @@ instance Show (Int -> Morphism) where
 instance Eq (Int -> Morphism) where
   (==) f1 f2 = (f1 0) == (f2 0)
 
-data Morphism = Inverse Morphism | Extend Int Morphism | Repeat Int Morphism | Factor Int | Label Int | Norm | Define | Pushin | IdR deriving (Show,Eq)
+data Morphism =
+  Inverse Morphism |
+  Extend Int Morphism |
+  Repeat Int Morphism |
+  Factor Int |
+  Label Int |
+  Norm |
+  Define |
+  SwapQQ | SwapQP | --SwapPQ | SwapPP |
+  IdR
+  deriving (Show,Eq)
 
-
---instance Show Morphism where
---  show Compose m1 m2 = show m1++" . "++shw m2
---  show Extend k f = "Extend "++show k++" "++show (f 0)
---  show Repeat k m = "Repeat "++show k++" "++show m
---  show Factor k = "Factor "++show k++
 
 apply :: Morphism -> Ring -> Maybe Ring
 apply (Label k) x = (label k) x
 apply (Factor k) x = (factor k) x
 apply (Norm) x = norm x
 apply Define x = define x
-apply Pushin x = pushin x
---apply (Compose m1 m2) x = (apply m2 x) >>= (\y -> apply m1 y)
+apply SwapQQ x = swapQQ x
+apply SwapQP x = swapQP x
+--apply SwapPQ x = swapPQ x
+--apply SwapPP x = swapQQ x
 apply (Extend k0 m) (Prod n k f) | k0==k = Just (Prod n k (\i -> f i >>= (\g -> apply m g)))  --- ( int -> Maybe R ) >>= (Ring -> Maybe Ring)  :: Int -> Maybe Ring
                                  | otherwise = Nothing
 apply (Repeat i m) (Quo n j k x) | i==j = (apply m x) >>= (\y -> Just (Quo n j k y))
@@ -63,7 +69,11 @@ infixl 2 <+>
 
 functorMatch = (Match matchExtend) <+> (Match matchRepeat)
 factorMatch = functorMatch <+> (Match matchFactor)
-permuteMatch = factorMatch <+> (Match matchLabel) <+> (Match matchDefine) <+> (Match matchPushin) <+> (Match matchNorm)
+permuteMatch =
+  factorMatch <+>
+  (Match matchLabel) <+>
+  (Match matchDefine) <+>
+  (Match matchSwap)
 normalizeMatch = permuteMatch <+> (Match matchNorm)
 morphismMatch :: IO Match
 morphismMatch = do { -- IO
@@ -71,6 +81,11 @@ morphismMatch = do { -- IO
   let correctMatch = (filter (\x -> fst x==mc ) [("Factor",factorMatch),("Permute",permuteMatch),("Normalize",normalizeMatch)]) in
       if length correctMatch == 0 then (logObj "MATCH_CONTEXT value invalid "  mc) >> (return factorMatch) else return (snd (head (correctMatch))); }
 
+morphismMatchExtend = do
+  mc <- matchContext
+  mm <- morphismMatch
+  if mc=="Normalize" then return (mm <+> (Match matchNormExtend)) else return mm
+  
   --matchMorphism :: Match
 --matchMorphism = (Match matchExtend) <+> (Match matchRepeat) <+> (Match matchFactor) <+>  -- <+> (Match matchId) <+> (Match matchNorm)
 --matchMorphism = (Match matchExtend) <+> (Match matchRepeat) <+> (Match matchFactor)
@@ -82,7 +97,7 @@ matchExtend (Prod n k f) =
   --let morphs=[(maybeToList (f i)) >>= (\r -> match matchMorphism r) | i<-[0..k-1]] -- [[Morph]]
   --in if morphs==[] then [] else fmap (\x -> Extend k x) (foldr intersect (head morphs) morphs)
   do { -- IO
-    mm <- morphismMatch; -- Match
+    mm <- morphismMatchExtend; -- Match
     morphs <- sequence (do { -- []
         i <- [0..k-1]; -- Int
         ring <- maybeToList (f i); -- Ring
@@ -119,9 +134,17 @@ matchDefine :: Ring -> IO [Morphism]
 matchDefine (Quo n k d0 (Base 1 d b p)) = return [Define]
 matchDefine r = return []
 
-matchPushin :: Ring -> IO [Morphism]
-matchPushin (Quo n kq d0 (Prod n2 kp f)) = return [Pushin]
-matchPushin r = return []
+matchSwap :: Ring -> IO [Morphism]
+matchSwap (Quo n0 k 0 (Quo n1 1 d r)) = return [SwapQQ] -- QQ
+matchSwap (Quo n0 k0 d0 (Prod n1 k1 f)) = return [SwapQP] -- QP
+--matchSwap (Prod n0 k0 f) | isQuo (f 0) = return [SwapPQ] -- PQ
+--                         | isProd (f 0) = return [SwapPP] -- PP
+--  where
+--    isProd Just (Prod _ _ _) = True
+--    isProd _ = False
+--    isQuo Just (Quo _ _ _ _) = True
+--    isQuo _ = False
+matchSwap _ = return []
 
 matchId :: Ring -> IO [Morphism]
 matchId r = return [IdR]
@@ -137,15 +160,32 @@ define_morphism (Factor k) (Base n d b p) = Just (phi n k d b p)
 define_morphism (Factor k) r = Nothing
 define_morphism (Label k) (Base n d b p) = Just (mL n k)
 define_morphism (Label k) r = Nothing
-define_morphism Norm (Base n d b p) = Just (gamma n d b p)
+define_morphism Norm (Base n d b p) = Just (gamma n 1 d b p)
 define_morphism Norm r = Nothing
 define_morphism Define (Quo n k d0 (Base 1 d b p)) = Just (mId n)
 define_morphism Define r = Nothing
-define_morphism Pushin (Quo n kq d0 (Prod n2 kp f)) = Just (mL n kq) -- check -- wrong (uses T)
-define_morphism Pushin r = Nothing
-define_morphism (Repeat k0 m) (Quo n k1 d r) = if k0 == k1 then (define_morphism m r) >>= (\lo -> (repeatLO n lo)) else Nothing
+define_morphism SwapQQ (Quo n0 k 0 (Quo n1 1 d r)) = Just (gamma k n1 d (get_root r) (get_prime r))
+define_morphism SwapQQ _ = Nothing
+define_morphism SwapQP (Quo n0 k0 d0 (Prod n1 k1 f)) = Just (mT k0 k1 (div n1 k1))
+--define_morphism SwapPQ (Prod n0 k0 f) =
+--  do
+--    (n1,k1) <- get_quo_vals (f 0)
+--    return (mT n0 k0 (div n1 k1))
+--  where
+--    get_quo_vals Just (Quo n1 k1 _ _) = Just (n1,k1)
+--    get_quo_vals _ = Nothing
+--define_morphism SwapPQ _ = Nothing
+--define_morphism SwapPP (Prod n0 k0 f) =
+--  do
+--    (n1,k1) <- get_prod_vals (f 0)
+--    return (mT n0 k0 (div n1 k1))
+--  where
+--    get_prod_vals Just (Prod n1 k1 _) = Just (n1,k1)
+--    get_prod_vals _ = Nothing
+--define_morphism SwapPP _ = Nothing
+define_morphism (Repeat k0 m) (Quo n k1 d r) = if k0 == k1 then (define_morphism m r) >>= (\lo -> (repeatLO k0 lo)) else Nothing
 define_morphism (Repeat k0 m) r = Nothing
-define_morphism (Extend k0 m) (Prod n k f) = extendLO n k0 (\i -> (f i) >>= (\r -> define_morphism m r))
+define_morphism (Extend k0 m) (Prod n k1 f) = if k0 == k1 then extendLO (div n k1) k1 (\i -> (f i) >>= (\r -> define_morphism m r)) else Nothing
 define_morphism (Extend k0 m) r = Nothing
 
 morphism_to_kernel :: Morphism -> Ring -> Maybe Kernel
@@ -153,12 +193,25 @@ morphism_to_kernel (Factor k) (Base n d b p) = Just (Phi n k d b p)
 morphism_to_kernel (Factor k) r = Nothing
 morphism_to_kernel (Label k) (Base n d b p) = Just (KL n (div n k))
 morphism_to_kernel (Label k) r = Nothing
-morphism_to_kernel Norm (Base n d b p) = Just (Gamma n d b p)
+morphism_to_kernel Norm (Base n d b p) = Just (Gamma n 1 d b p)
 morphism_to_kernel Norm r = Nothing
 morphism_to_kernel Define (Quo n k d0 (Base 1 d b p)) = Just (KId n)
 morphism_to_kernel Define r = Nothing
-morphism_to_kernel Pushin (Quo n kq d0 (Prod n2 kp f)) = Just (KT n kq (div n2 kp)) -- check
-morphism_to_kernel Pushin r = Nothing
+morphism_to_kernel SwapQQ (Quo n0 k 0 (Quo n1 1 d r)) = Just (Gamma k n1 d (get_root r) (get_prime r))
+morphism_to_kernel SwapQQ _ = Nothing
+morphism_to_kernel SwapQP (Quo n0 k0 d0 (Prod n1 k1 f)) = Just (KT k0 k1 (div n1 k1))
+--morphism_to_kernel SwapPQ (Prod n0 k0 f) =
+--  do
+--    ring <- f 0
+--    (n1,k1,_,_) <- quo_get_vals ring
+--    return (KT n0 k0 (div n1 k1))
+--morphism_to_kernel SwapPQ _ = Nothing
+--morphism_to_kernel SwapPP (Prod n0 k0 f) =
+--  do
+--    ring <- f 0
+--    (n1,k1,_) <- prod_get_vals ring
+--    return (KT n0 k0 (div n1 k1))
+--morphism_to_kernel SwapPP _ = Nothing
 morphism_to_kernel (Repeat k0 m) (Quo n k1 d r) = if k0 == k1 then (morphism_to_kernel m r) >>= (\lo -> Just (Kernel_Repeat n k0 lo)) else Nothing
 morphism_to_kernel (Repeat k0 m) r = Nothing
 morphism_to_kernel (Extend k0 m) (Prod n k f) = Just (Kernel_Extend n k0 (\i -> (f i) >>= (\r -> morphism_to_kernel m r)))

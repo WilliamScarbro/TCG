@@ -16,25 +16,6 @@ import Util.Util
 
 ---
 
---expand :: Ring -> [Ring]
---expand r = let mrl=nub (fmap (\m -> apply m r) (match matchMorphism r)) in foldr (++) [] (fmap maybeToList mrl)
-
-
----
-
---search_morphs :: [Ring] -> Map.Map Ring [Morphism] -> Map.Map Ring [Morphism]
---search_morphs (current:z) hmap = if Map.member current hmap then search_morphs z hmap else
---  let morphs = match matchMorphism current in
---    let neighbors = foldl (++) [] (fmap maybeToList (fmap (\m -> apply m current) morphs)) in
---      let hmap_new = Map.insert current morphs hmap in
---        search_morphs (nub (z++neighbors)) hmap_new
---search_morphs [] hmap = hmap
---
---terminal :: Eq b => Map.Map a [b] -> [a]
---terminal hmap = fst (Map.mapAccumWithKey (\accum key val -> (if val==[] then accum++[key] else accum,0)) [] hmap)
-
----
-
 data Path = Path Ring [Morphism] deriving (Show,Eq)
 path_get_start :: Path -> Ring
 path_get_start (Path start morphs) = start
@@ -56,7 +37,21 @@ path_get_end (Path cur []) = Just cur
 
 path_get_states :: Path -> Maybe [Ring]
 path_get_states (Path start morphs) = traverse id (scanl (\prev_state m -> prev_state >>= apply m) (Just start) morphs)
-                                                            
+
+path_map :: (Morphism -> Ring -> Maybe b) -> Path -> Maybe [b]
+path_map func (Path start morphs) = rec_map func start morphs
+  where
+    rec_map :: (Morphism -> Ring -> Maybe b) -> Ring -> [Morphism] -> Maybe [b]
+    rec_map func cur (m:morphs) = do
+          result <- func m cur
+          next <- apply m cur
+          rest <- rec_map func next morphs
+          return ([result]++rest)
+    rec_map func cur [] = Just []
+    
+path_define :: Path -> Maybe [LinearOp FF]
+path_define path = path_map define_morphism path
+  
 buildPath :: Ring -> (Ring -> IO (Maybe Morphism)) -> IO Path
 buildPath start f = buildPath_help start f start []
 buildPath_help :: Ring -> (Ring -> IO (Maybe Morphism)) -> Ring -> [Morphism] -> IO Path
@@ -155,31 +150,7 @@ splitPathOnState (Path start morphs) split = helper start [] start morphs split
     helper start before current after split = if current == split then Just (Path start before,Path split after) else
       let m = head after in
         (apply m current) >>= (\next -> helper start (before++[m]) next (tail after) split)
-                                                
-
----
-
---buildForestPath :: Ring -> [Tree (Morphism)]
---buildForestPath start = unfoldForest buildForestPath_branch [(Just start,mi) | mi <- match matchMorphism start]
---
---buildForestPath_branch :: (Maybe Ring,Morphism) -> (Morphism, [(Maybe Ring, Morphism)])
---buildForestPath_branch (r,m) = let r2 = r >>= apply m in
---  (m,[(r2,mi) | mi <- buildForestPath_help r2])
---
---buildForestPath_help :: Maybe Ring -> [Morphism]
---buildForestPath_help (Just r) = match matchMorphism r
---buildForestPath_help Nothing = []
---
---randomPath :: Ring -> Int -> Maybe Path
---randomPath start seed = let morphs = fst (randomWalk (fmap (fmap (\x -> Just x)) (buildForestPath start)) (mkStdGen seed)) in
---  morphs >>= (\ms -> Just (Path start ms))
---
---randomPathGen :: RandomGen g => Ring -> g -> Maybe (Path,g)
---randomPathGen start rand = let (morphs,rand2) = (randomWalk (fmap (fmap (\x -> Just x)) (buildForestPath start)) rand) in
---                             Just (\x -> (Path start x,rand2)) <*> morphs
-
--- Maybe Ring -> [Morphism]
-
+                                               
 
 ---
 
@@ -211,7 +182,7 @@ buildRingTree_branch r = do { --IO
   morphs <- match mm r; -- [Morphs]
   rings <- maybeToIO "buildRingTree calling apply" (sequence (fmap (\m -> apply m r) morphs));
   return (r,rings); }
-		     
+  
 --(r,foldl (++) [] (fmap maybeToList (fmap (\m -> apply m r) (match matchMorphism r))))
 
 --
@@ -253,7 +224,18 @@ turtlesExtend p1 turtle = do {
   p1_end <- maybeToIO "turtlesExtend calling path_get_end" (path_get_end p1);
   p2 <- turtles p1_end turtle;
   maybeToIO "turtlesExtend calling appendPath" (appendPath p1 p2); }
-  
+
+randomSample :: Ring -> StdGen -> Int -> IO [Path]
+randomSample ring rand size = 
+  do
+    plist <- sequence (scanl scanf (randomPath ring rand) [0..(size-2)])
+    return (fmap fst plist)
+  where
+    scanf :: IO (Path,StdGen) -> Int -> IO (Path,StdGen)
+    scanf x_rand y = do {
+      (x,rand) <- x_rand;
+      randomPath (path_get_start x) rand }
+ 
 --turtlesAWD :: Ring -> Morphism -> Maybe [Kernel] -> Maybe [Kernel]
 --turtlesAWD cur turtle path = let morphs = (filter (\m -> is_par_morph turtle m) (match matchMorphism cur)) in
 --  if morphs == [] then path else
