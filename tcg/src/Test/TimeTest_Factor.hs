@@ -1,6 +1,6 @@
 module Test.TimeTest_Factor where
 
-import Search.CodeGen
+--import Search.CodeGen
 import Algebra.FField
 import Algebra.NTT
 import Compile.CompileKernel
@@ -8,7 +8,7 @@ import Search.Search
 import Algebra.Fourier
 import Algebra.PolyRings
 import Data.List
-
+import Compile.Compilers
 
 --timeSize :: Ring -> IO [(Int,Int,Float)]
 --timeSize r = let n = get_size r in

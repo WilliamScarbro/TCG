@@ -59,6 +59,8 @@ permCor path =
      
 -- data
 
+factor_path4 = Path (Base 4 0 4 5) [(Factor 2),(Extend 2 (Factor 2))]
+
 factor_path8 = Path (Base 8 0 8 17) [(Factor 2),(Extend 2 (Factor 2)),(Extend 2 (Extend 2 (Factor 2)))]
 
 spiral_path6 = Path (Base 6 0 6 7) [(Label 2), (Repeat 2 (Factor 3)), SwapQP, (Extend 3 (Define)), (Extend 3 (Norm)), (Extend 3 (Repeat 1 (Factor 2))), (Extend 3 SwapQP), (Extend 3 (Extend 2 Define))]

@@ -8,8 +8,9 @@ import Compile.CompileKernel
 import Search.Search
 import Algebra.Fourier
 import Search.Genetic
-import Search.CodeGen
+--import Search.CodeGen
 import Util.Logger
+import Compile.Compilers
 
 instance Species Path where
   --sample :: RandomGen b => a -> Std -> IO (a,StdGen)

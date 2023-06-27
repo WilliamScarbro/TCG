@@ -6,7 +6,9 @@ import Algebra.PolyRings
 import Algebra.FField
 import Search.Search
 import Util.Util
-import Search.CodeGen 
+import Compile.Compilers
+import Util.KernelTimer
+--import Search.CodeGen 
 
 
 

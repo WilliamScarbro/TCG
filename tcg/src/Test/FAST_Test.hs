@@ -102,3 +102,70 @@ fast_spec = do
         let expected_ast = FieldAST [
               FieldAssignment "t3" (FieldOpExpr (FAdd (Variable "x[1]") (FieldOpExpr (FMultiply (Constant 16) (Variable "x[9]"))))) ] in
           removeOnes ast `shouldBe` expected_ast
+
+
+----
+    it "should add negation to the multiplication expressions" $ do
+      let field = FField 3
+          fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FMultiply (Constant 2) (Variable "y")))]
+          expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FNeg (Variable "y")))] 
+      addNegation field fast `shouldBe` expectedAST
+
+    it "should add negation to the multiplication expressions (reversed)" $ do
+      let field = FField 5
+          fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FMultiply (Variable "y") (Constant 4)))]
+          expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FNeg (Variable "y")))]
+      addNegation field fast `shouldBe` expectedAST
+
+--    
+    it "should remove negation from the addition expr (FT)" $ do
+      let fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FAdd (Variable "y") (FieldOpExpr (FNeg (Variable "z")))))]
+          expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FSubtract (Variable "y") (Variable "z")))]
+      removeNegation fast `shouldBe` expectedAST
+    
+    it "should remove negation from the addition expr (TF)" $ do
+      let fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FAdd (FieldOpExpr (FNeg (Variable "z"))) (Variable "y") ))]
+          expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FSubtract (Variable "y") (Variable "z")))]
+      removeNegation fast `shouldBe` expectedAST
+
+    it "should remove negation from the addition expr (TT)" $ do
+      let fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FAdd (FieldOpExpr (FNeg (Variable "z"))) (FieldOpExpr (FNeg (Variable "y"))) ))]
+          expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FNeg (FieldOpExpr (FAdd (Variable "z") (Variable "y")))))]
+      removeNegation fast `shouldBe` expectedAST
+
+--
+    it "should remove negation from the subtraction expr (FT)" $ do
+      let fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FSubtract (Variable "y") (FieldOpExpr (FNeg (Variable "z")))))]
+          expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FAdd (Variable "y") (Variable "z")))]
+      removeNegation fast `shouldBe` expectedAST
+
+    it "should remove negation from the subtraction expr (TF)" $ do
+      let fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FSubtract (FieldOpExpr (FNeg (Variable "z"))) (Variable "y") ))]
+          expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FNeg (FieldOpExpr (FAdd (Variable "z") (Variable "y")))))]
+      removeNegation fast `shouldBe` expectedAST
+
+    it "should remove negation from the subtraction expr (TT)" $ do
+      let fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FSubtract (FieldOpExpr (FNeg (Variable "z"))) (FieldOpExpr (FNeg (Variable "y"))) ))]
+          expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FSubtract (Variable "y") (Variable "z")))]
+      removeNegation fast `shouldBe` expectedAST
+
+--
+  it "real example for add negation" $ do
+    let field = FField 5
+        fast = FieldAST [FieldAssignment "t0" (FieldOpExpr (FAdd (Variable "X[0]") (Variable "X[2]"))),
+                         FieldAssignment "t1" (FieldOpExpr (FAdd (Variable "X[0]") (FieldOpExpr (FMultiply (Constant 4) (Variable "X[2]"))))),
+                         FieldAssignment "t2" (FieldOpExpr (FAdd (Variable "X[1]") (Variable "X[3]"))),
+                         FieldAssignment "t3" (FieldOpExpr (FAdd (Variable "X[1]") (FieldOpExpr (FMultiply (Constant 4) (Variable "X[3]"))))),
+                         FieldAssignment "t4" (FieldOpExpr (FAdd (Variable "t0") (Variable "t2"))),
+                         FieldAssignment "t5" (FieldOpExpr (FAdd (Variable "t0") (FieldOpExpr (FMultiply (Constant 4) (Variable "t2"))))),
+                         FieldAssignment "t6" (FieldOpExpr (FAdd (Variable "t1") (FieldOpExpr (FMultiply (Constant 2) (Variable "t3"))))),
+                         FieldAssignment "t7" (FieldOpExpr (FAdd (Variable "t1") (FieldOpExpr (FMultiply (Constant 3) (Variable "t3")))))]
+        expectedAST = FieldAST [FieldAssignment "t0" (FieldOpExpr (FAdd (Variable "X[0]") (Variable "X[2]"))),
+                                FieldAssignment "t1" (FieldOpExpr (FAdd (Variable "X[0]") (FieldOpExpr (FNeg (Variable "X[2]"))))),
+                                FieldAssignment "t2" (FieldOpExpr (FAdd (Variable "X[1]") (Variable "X[3]"))),
+                                FieldAssignment "t3" (FieldOpExpr (FAdd (Variable "X[1]") (FieldOpExpr (FNeg (Variable "X[3]"))))),
+                                FieldAssignment "t4" (FieldOpExpr (FAdd (Variable "t0") (Variable "t2"))),
+                                FieldAssignment "t5" (FieldOpExpr (FAdd (Variable "t0") (FieldOpExpr (FNeg (Variable "t2"))))),
+                                FieldAssignment "t6" (FieldOpExpr (FAdd (Variable "t1") (FieldOpExpr (FMultiply (Constant 2) (Variable "t3"))))),
+                                FieldAssignment "t7" (FieldOpExpr (FAdd (Variable "t1") (FieldOpExpr (FMultiply (Constant 3) (Variable "t3")))))]
+    addNegation field fast `shouldBe` expectedAST

@@ -25,13 +25,16 @@ executable tcg
     Algebra.PolyRings,
     Compile.CompileKernel,
     Interface.PolyMult,
-    Search.CodeGen,
+    --Search.CodeGen,
     Search.GeneticCode,
     Search.Genetic,
     Search.Search,
     Util.Logger,
     Compile.KernelToFieldAST,
     Compile.PathToC,
+    Compile.Compilers,
+    Compile.CAST,
+    Compile.FAST,
     Util.Util,
     Util.KernelTimer,
     Test.TestCode,
@@ -55,6 +58,27 @@ executable tcg
   hs-source-dirs: src
   default-language:    Haskell2010
 
+Test-Suite Generate-Test
+  type:               exitcode-stdio-1.0
+  main-is:            Test/Generate_Tests.hs
+  hs-source-dirs:     src
+  other-modules:
+    Compile.PathToC
+  build-depends:
+    base,
+    mtl >=2.2.2,
+    containers >= 0.6.0.1,
+    matrix >= 0.3.6.1,
+    random >= 1.2.1.1,
+    process >= 1.6.3.0,
+    regex-posix >= 0.96.0.1,
+    random-shuffle >= 0.0.4,
+    transformers >= 0.6.1.0,
+    hashable >= 1.4.2.0,
+    hspec >= 2.7,
+    hspec-discover >= 2.7
+  default-language: Haskell2010
+  
 Test-Suite Compile-Test
   type:               exitcode-stdio-1.0
   main-is:            Test/Compile_Tests.hs

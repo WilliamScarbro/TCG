@@ -2,7 +2,7 @@ module Util.KernelTimer where
 
 import System.Process
 import System.Environment
-
+import Text.Regex.Posix
 --
 
 kt_home = (getEnv "TCG_HOME") >>= (\x -> return (x++"/kernel-timer/"))
@@ -31,3 +31,24 @@ writeCode name code = do -- IO
   
 extractResult :: FilePath -> IO [Int]
 extractResult fname = do { result <- testCode fname; (\x -> pure (fmap (\num -> read num :: Int) (tail (words x)))) result }
+
+--
+
+timeCode :: FilePath -> IO String
+timeCode fname = do { -- IO 
+  timer_path <- kt_relative_path "timer.sh";
+  bin_path <- binary_path fname;
+  readProcess "bash" [timer_path,bin_path] "" }
+
+extractTimes :: String -> [Float]
+extractTimes s = let (before,match,after,_) = s =~ "[0-9]+\\.[0-9]*" :: (String,String,String,[String]) in
+  if match == "" then [] else [read match :: Float] ++ (extractTimes after) 
+
+timeCodeAvg :: FilePath -> IO Float
+timeCodeAvg fname = 
+      do { str_res <- timeCode fname;
+           res <- return (extractTimes str_res);
+           sum <- return (foldr (+) 0 res);
+           total <- return (length res);
+           return (sum/(fromIntegral total)) }
+

@@ -9,39 +9,92 @@ import Util.Util
 import Test.Util
 import Util.KernelTimer
 import Util.Logger
-
+import Compile.FAST
 import Test.Hspec
 import System.Random
 import Control.Monad
+import Compile.Compilers
+
+import System.Environment
 
 path2c_spec :: Spec
 path2c_spec = do
   describe "compile Path to C and test results" $ do
-    it "compile Factor 8 path" $ do -- IO
-      (result,cor) <- testForwardPath2 factor_path8
+
+    -- Direct
+    it "compile Factor 4 path Direct" $ do -- IO
+      set_env <- setEnv "COMPILER" "Direct"
+      (result,cor) <- return set_env >> testForwardPath2 factor_path4
+      return (result == cor) `shouldReturn` True 
+
+    it "compile Factor 8 path  Direct" $ do -- IO
+      set_env <- setEnv "COMPILER" "Direct"
+      (result,cor) <- return set_env >> testForwardPath2 factor_path8
       return (result == cor) `shouldReturn` True
-    it "compile 6-way spiral size 6" $ do
-      (result,cor) <- testForwardPath2 spiral_path6
+
+    it "compile 6-way spiral size 6 Direct" $ do
+      set_env <- setEnv "COMPILER" "Direct"
+      (result,cor) <- return set_env >> testForwardPath2 spiral_path6
       return (result == cor) `shouldReturn` True
+
+    it "compile 6-way spiral size 8 Direct" $ do
+      set_env <- setEnv "COMPILER" "Direct"
+      (result,cor) <- return set_env >> testForwardPath2 spiral_path8
+      return (result == cor) `shouldReturn` True
+
+    it "compile 6-way spiral size 12 Direct" $ do
+      set_env <- setEnv "COMPILER" "Direct"
+      (result,cor) <- return set_env >> testForwardPath2 spiral_path12
+      return (result == cor) `shouldReturn` True    
+ 
+    it "compile sample size 64 number 20 Direct" $ do
+      set_env <- setEnv "COMPILER" "Direct"
+      ((return set_env) >> (testSample (Base 64 64 128 257) (mkStdGen 10) 20)) `shouldReturn` True
     
-    it "compile 6-way spiral size 8" $ do
-      (result,cor) <- testForwardPath2 spiral_path8
+    it "compile sample size 16 number 20 Direct" $ do
+      set_env <- setEnv "COMPILER" "Direct"
+      ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+ 
+
+    -- DirectMonty
+    it "compile Factor 4 path DirectMonty" $ do -- IO
+      set_env <- setEnv "COMPILER" "DirectMonty"
+      (result,cor) <- return set_env >> testForwardPath2 factor_path4
       return (result == cor) `shouldReturn` True
-    
-    it "compile 6-way spiral size 12" $ do
-      (result,cor) <- testForwardPath2 spiral_path12
+      
+    it "compile Factor 8 path  DirectMonty" $ do -- IO
+      set_env <- setEnv "COMPILER" "DirectMonty"
+      (result,cor) <- return set_env >> testForwardPath2 factor_path8
+      return (result == cor) `shouldReturn` True
+
+    it "compile 6-way spiral size 6 DirectMonty" $ do
+      set_env <- setEnv "COMPILER" "DirectMonty"
+      (result,cor) <- return set_env >> testForwardPath2 spiral_path6
+      return (result == cor) `shouldReturn` True
+
+    it "compile 6-way spiral size 8 DirectMonty" $ do
+      set_env <- setEnv "COMPILER" "DirectMonty"
+      (result,cor) <- return set_env >> testForwardPath2 spiral_path8
+      return (result == cor) `shouldReturn` True
+
+    it "compile 6-way spiral size 12 DirectMonty" $ do
+      set_env <- setEnv "COMPILER" "DirectMonty"
+      (result,cor) <- return set_env >> testForwardPath2 spiral_path12
       return (result == cor) `shouldReturn` True    
 
-    it "compile sample size 64" $ do
-      (testSample (Base 64 64 128 257) (mkStdGen 10) 10) `shouldReturn` True
-
-    it "compile sample size 16" $ do
-      (testSample (Base 16 16 128 257) (mkStdGen 10) 10) `shouldReturn` True
-
+    it "compile sample size 64 number 20 DirectMonty" $ do
+      set_env <- setEnv "COMPILER" "DirectMonty"
+      ((return set_env) >> (testSample (Base 64 64 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+    
+    it "compile sample size 16 number 20 DirectMonty" $ do
+      set_env <- setEnv "COMPILER" "DirectMonty"
+      ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+ 
+  
 
 testSample :: Ring -> StdGen -> Int -> IO Bool
 testSample ring gen size =
-  do
+  do  
     paths <- randomSample ring gen size -- [Path]
     tested <- sequence (fmap test_func paths) -- [(([Int],[Int]),Path)]
     compared <- sequence (fmap compare_func tested) -- [Bool]
@@ -63,9 +116,10 @@ testSample ring gen size =
 testForwardPath :: Path -> IO ([Int],[Int])
 testForwardPath path =
   let
-    fname = "DirGen" in
+    fname = "DirGen" 
+    ff = FField (get_prime (path_get_start path)) in
   do -- IO
-    code <- compilePathToC path 
+    code <- compilePathToC ff add_boiler_plate path
     result <- writeCode fname code >> extractResult fname
     permCor <- maybeToIO "Failed get permCor" (permCor path)
     return (result,permCor)
@@ -78,6 +132,7 @@ testForwardPath2 path =
     prime = get_prime start
     size = get_size start
     fname = "DirGen"
+    --ff = FField prime
     corMaybe =
       do -- Maybe
         lo_list <- path_define path
@@ -86,6 +141,6 @@ testForwardPath2 path =
     corIO = maybeToIO "Failed get correct" corMaybe in
   do -- IO
     cor <- corIO
-    code <- compilePathToC path
+    code <- compilePath path
     result <- writeCode fname code >> extractResult fname
     return (result,cor)

@@ -5,6 +5,9 @@ module Compile.CompileKernel where
 import Algebra.NTT
 import Data.Maybe
 import Data.List
+import Search.Search
+import Algebra.PolyRings
+import Util.Util
 import qualified Data.Map as Map (fromList,empty,insert,Map,member,lookup,mapWithKey,mapAccum,mapAccumWithKey)
  
 --- [Kernel] --> C file
@@ -23,9 +26,6 @@ compileKList path pcc = let compKers = fmap (\ker -> compileKernel 0 ker pcc) pa
 -- Maybe (Integer,String) >>= (String -> Maybe String)
 
 --compileKList p km = let steps = foldr (++) [] (fmap maybeToList (fmap (\ker -> compileKernel 0 ker (Map.lookup km) p)) in
-
-showTuple :: Show a => [a] -> String
-showTuple t = let st = fmap show t in foldl (\x y -> (x++","++y)) (head st) (tail st)
 
 compileKernel :: Int -> Kernel -> PCC -> Maybe String
 compileKernel o (Phi n k d b p) pcc = Just ("  Phi("++(showTuple [n,k,d,b,p])++","++(endXY o)++","++(endW (Phi n k d b p) pcc)++");\n")
@@ -148,8 +148,8 @@ stop_timer = "\n  stop_timer();\n"
 report_timer = "  printf(\"Elapsed time: %f\\n\",elapsed_time());\n"
 --
 
-compile :: (Int,Int,Int) -> String -> KList -> String
-compile (n,b,p) name path = let filtered_path = filter (\k -> not (is_identity k)) path in
+compileKernelsToFuncs :: (Int,Int,Int) -> String -> KList -> String
+compileKernelsToFuncs (n,b,p) name path = let filtered_path = filter (\k -> not (is_identity k)) path in
   let iw = initialize_w (b,p) in
     let ipcc = associateKernels filtered_path in
       let pcc = reducePCC ipcc in
@@ -160,6 +160,14 @@ compile (n,b,p) name path = let filtered_path = filter (\k -> not (is_identity k
                 let mf = main_func n name (mod (length path) 2) in
                   imports++"void "++name++"(int** X,int** Y){\n"++iw++ip++start_timer++cp++stop_timer++report_timer++dp++"}\n"++mf
 
+
+compilePathToFunc :: Path -> IO String
+compilePathToFunc path = let pstart = path_get_start path in
+  let sn = get_size pstart in
+    let sb = get_root pstart in
+      let sp = get_prime pstart in
+        let msteps = path_get_steps path in
+          maybeToIO "pathToFunc failed" (msteps >>= (\steps -> Just (compileKernelsToFuncs (sn,sb,sp) "Gen" steps) ) )
 --
 
 --

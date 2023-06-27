@@ -10,11 +10,11 @@ cast_spec :: Spec
 cast_spec = do
   describe "translateCToStr" $ do
     it "translates an empty program to an empty string" $
-      translateCToStr (CProgram []) `shouldBe` ""
+      translateCToStr (CProgram []) `shouldBe` []
 
     it "translates a program with one assignment statement" $
       translateCToStr (CProgram [CAssignment "x" (Literal (IntLiteral 42))])
-        `shouldBe` "x = 42;\n"
+        `shouldBe` ["x = 42;"]
 
   describe "translateStmt" $ do
     it "translates an assignment statement to a string" $
