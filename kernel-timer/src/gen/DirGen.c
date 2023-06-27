@@ -193,7 +193,7 @@ int main(int argc,char** argv){
     }
     
     monty_str monty;
-    monty_init(&monty,257,512,255,128);
+    monty_init(&monty,257,512,255,128,9);
     for(int i=0; i<16; i++){
       toResidue(&monty,X[i]);
     }

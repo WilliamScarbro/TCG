@@ -16,3 +16,6 @@ showTuple t = let st = fmap show t in foldl (\x y -> (x++","++y)) (head st) (tai
 showStrTuple :: [String] -> String
 showStrTuple t =
   foldl (\x y -> (x++","++y)) (head t) (tail t)
+
+log2_round :: Int -> Int
+log2_round x = round ((log (fromIntegral x)) / (log 2))

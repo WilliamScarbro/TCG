@@ -37,10 +37,12 @@ int main(int argc,char** argv){
     }
     
     monty_str monty;
-    monty_init(&monty,5,8,3,2);
+    monty_init(&monty,5,8,3,2,3);
     for(int i=0; i<4; i++){
       toResidue(&monty,X[i]);
     }
+
+    print_array("input Residues",X,4);
     
     initialize_timer();
     start_timer();
@@ -49,10 +51,14 @@ int main(int argc,char** argv){
     
     stop_timer();
     printf("Elapsed time: %f\n",elapsed_time());
+
+    print_array("result residues",Y,4);
     
     for(int i=0; i<4; i++){
       fromResidue(&monty,Y[i]);
     }
+
+    print_array("result ints",Y,4);
     
     for(int i=0; i<4; i++){
       Y[i]=(((Y[i]+5)%5)+5)%5;

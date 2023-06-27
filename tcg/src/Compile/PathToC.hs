@@ -77,7 +77,6 @@ data_init size =
 
 call_gen = "gen(X,Y);" 
 
-
 time_gen :: String -> [String]
 time_gen gen_call =
   [ "initialize_timer();",
@@ -147,7 +146,7 @@ add_boiler_plate_monty cp size prime =
     monty <- monty_init prime
     monty_init_str <- return (
       [ "monty_str monty;",
-        "monty_init(&monty,"++(showTuple [p monty,r monty,pPrime monty,rInv monty])++");",
+        "monty_init(&monty,"++(showTuple [p monty,r monty,pPrime monty,rInv monty,round ((log (fromIntegral (r monty))) / (log 2))])++");",
         "for(int i=0; i<"++show size++"; i++){",
         "  toResidue(&monty,X[i]);",
         "}",

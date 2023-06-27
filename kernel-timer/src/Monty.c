@@ -1,18 +1,33 @@
 #include <stdio.h>
 #include "Monty.h"
 
-monty_str monty_init(monty_str* monty,int P,int R,int P_prime,int R_inv){
+monty_str monty_init(monty_str* monty,int P,int R,int P_prime,int R_inv,int R_log){
   monty->P=P;
   monty->R=R;
   monty->P_prime=P_prime;
   monty->R_inv=R_inv;
+  monty->R_log=R_log;
 }
 
-int REDC(monty_str* monty,int T){
+int fast_mod(int x,int log_m){
+  return x-(1<<log_m)*(x>>log_m);
+}
+
+int fast_div(int x,int log_m){
+  return x>>log_m;
+}
+
+int REDC(monty_str* monty, int T){
+  int m=fast_mod(fast_mod(T,monty->R_log)*(monty->P_prime),monty->R_log);
+  int t=fast_div(T+m*(monty->P),monty->R_log);
+  return t;
+}
+
+int REDC2(monty_str* monty,int T){
   int m=((T % (monty->R)) * (monty->P_prime)) % (monty->R);
   int t=(T + m * (monty->P)) / (monty->R);
-  printf("Monty: %d %d %d %d : REDC T %d m %d t %d\n",
-	 monty->P,monty->R,monty->P_prime,monty->R_inv,T,m,t);
+  //printf("Monty: %d %d %d %d : REDC T %d m %d t %d\n",
+  //	 monty->P,monty->R,monty->P_prime,monty->R_inv,T,m,t);
   return t;
 }
    
