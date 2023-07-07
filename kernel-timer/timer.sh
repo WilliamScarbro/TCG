@@ -19,9 +19,7 @@ if [ -z $TIMER_ITERS ]; then
   echo "TIMER_ITERS not set" 1>&2
 fi
 
-#pushd "$POLYMULT_HOME/kernel-timer" > /dev/null
-
-pushd /home/scarbro/CSU/TCG/kernel-timer > /dev/null
+pushd "$TCG_HOME/kernel-timer" > /dev/null
 
 rm $1
 make > /dev/null
