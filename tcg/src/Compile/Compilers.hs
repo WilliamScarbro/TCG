@@ -22,8 +22,21 @@ compilePath path =
   do -- IO
     cname <- compiler_name
     monty <- maybeToIO "failed monty_init" (monty_init prime)
-    cfunc <- maybeToIO ("COMPILER value invalid "++cname) (lookup cname [("Direct",compilePathToC (FField prime) add_boiler_plate),
-                                                                         ("DirectMonty",compilePathToC monty add_boiler_plate_monty),
+    cfunc <- maybeToIO ("COMPILER value invalid "++cname) (lookup cname [("Direct",compilePathToC
+                                                                           (FField prime)
+                                                                           compileKersToFieldAST
+                                                                           pruneFast
+                                                                           add_boiler_plate),
+                                                                         ("DirectMonty",compilePathToC
+                                                                           monty
+                                                                           compileKersToFieldAST
+                                                                           pruneFast
+                                                                           add_boiler_plate_monty),
+                                                                         ("DirectMontyInMem",compilePathToC
+                                                                           monty
+                                                                           compileKersToFieldAST_inMem
+                                                                           pruneFast
+                                                                           add_boiler_plate_monty),
                                                                          ("Functional",compilePathToFunc)])
     cfunc path
 
@@ -31,5 +44,7 @@ timePath :: Path -> String -> IO Float
 timePath path fname =
   do
     compiled <- compilePath path
-    writeCode fname compiled >> timeCodeAvg fname 
+    timed <- writeCode fname compiled >> timeCodeAvg fname
+    logged <- logObj "Timed" (path,timed) >> return timed
+    return logged
     

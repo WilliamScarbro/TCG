@@ -13,6 +13,12 @@
   * create standard test benchmark for comparison
 * next:
   * fix paper after SwapQQ updates
+    * swap section
+	* fix spiral derivation
+	* add example derivations (between implementation and results)
+	  * Negative wrapped convolution
+	  * Seiler
+	  * Simple identity
   * start on inverse and point-wise multiplication
   
 ## Timeline

@@ -89,7 +89,41 @@ path2c_spec = do
     it "compile sample size 16 number 20 DirectMonty" $ do
       set_env <- setEnv "COMPILER" "DirectMonty"
       ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
- 
+
+  
+    -- DirectMontyInMem
+    it "compile Factor 4 path DirectMontyInMem" $ do -- IO
+      set_env <- setEnv "COMPILER" "DirectMontyInMem"
+      (result,cor) <- return set_env >> testForwardPath2 factor_path4
+      return (result == cor) `shouldReturn` True
+      
+    it "compile Factor 8 path  DirectMontyInMem" $ do -- IO
+      set_env <- setEnv "COMPILER" "DirectMontyInMem"
+      (result,cor) <- return set_env >> testForwardPath2 factor_path8
+      return (result == cor) `shouldReturn` True
+
+    it "compile 6-way spiral size 6 DirectMontyInMem" $ do
+      set_env <- setEnv "COMPILER" "DirectMontyInMem"
+      (result,cor) <- return set_env >> testForwardPath2 spiral_path6
+      return (result == cor) `shouldReturn` True
+
+    it "compile 6-way spiral size 8 DirectMontyInMem" $ do
+      set_env <- setEnv "COMPILER" "DirectMontyInMem"
+      (result,cor) <- return set_env >> testForwardPath2 spiral_path8
+      return (result == cor) `shouldReturn` True
+
+    it "compile 6-way spiral size 12 DirectMontyInMem" $ do
+      set_env <- setEnv "COMPILER" "DirectMontyInMem"
+      (result,cor) <- return set_env >> testForwardPath2 spiral_path12
+      return (result == cor) `shouldReturn` True    
+
+    it "compile sample size 64 number 20 DirectMontyInMem" $ do
+      set_env <- setEnv "COMPILER" "DirectMontyInMem"
+      ((return set_env) >> (testSample (Base 64 64 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+    
+    it "compile sample size 16 number 20 DirectMontyInMem" $ do
+      set_env <- setEnv "COMPILER" "DirectMontyInMem"
+      ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
   
 
 testSample :: Ring -> StdGen -> Int -> IO Bool
@@ -112,18 +146,18 @@ testSample ring gen size =
       else
         logObj "Failed LO rep of path" p >> return False
 
--- compares to full size phi transformation
-testForwardPath :: Path -> IO ([Int],[Int])
-testForwardPath path =
-  let
-    fname = "DirGen" 
-    ff = FField (get_prime (path_get_start path)) in
-  do -- IO
-    code <- compilePathToC ff add_boiler_plate path
-    result <- writeCode fname code >> extractResult fname
-    permCor <- maybeToIO "Failed get permCor" (permCor path)
-    return (result,permCor)
-
+---- compares to full size phi transformation
+--testForwardPath :: Path -> IO ([Int],[Int])
+--testForwardPath path =
+--  let
+--    fname = "DirGen" 
+--    ff = FField (get_prime (path_get_start path)) in
+--  do -- IO
+--    code <- compilePathToC ff add_boiler_plate path
+--    result <- writeCode fname code >> extractResult fname
+--    permCor <- maybeToIO "Failed get permCor" (permCor path)
+--    return (result,permCor)
+--
 -- directly compares to LO path
 testForwardPath2 :: Path -> IO ([Int],[Int])
 testForwardPath2 path =

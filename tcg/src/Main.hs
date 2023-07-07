@@ -10,6 +10,7 @@ import Search.GeneticCode
 import Test.GeneticTest
 import Util.Logger
 import Test.TimeTest_Factor
+import Search.Decompose
 
 import qualified Data.Map as Map (empty,insert,Map,member)
 import Data.Tree
@@ -56,8 +57,13 @@ factorRun (logn,p) = do { -- IO
 main :: IO ()
 --main = passEnvVars >> testPathPop new_hope_params 1000
 --main = passEnvVars >> factorRun new_hope_logn
-main = passEnvVars >> (\x -> geneticRun new_hope_params x 0 >> geneticRun new_hope_params x 10 >> geneticRun kyber_params x 0 >> geneticRun kyber_params x 10 ) 20
- 
+--main = passEnvVars >> (\x -> geneticRun new_hope_params x 0 >> geneticRun new_hope_params x 10 >> geneticRun kyber_params x 0 >> geneticRun kyber_params x 10 ) 20
+main = do
+  passEnvVars
+  path <- turtles (Base 64 0 64 7681) (Factor 2)
+  best_path <- decomp_search 5 5 10 path
+  putStr ( (show best_path)++"\n")
+
  --main = putStrLn (drawForest (fmap (fmap show) (buildPathForest (Base 4 0 4 5))))
  --main = putStrLn $ drawTree $ fmap $ (fmap show) $ buildTree $ (Base 4 0 4 5)
  --main = let graph = search [Base 4 0 4 5] expand Map.empty in putStrLn (show (terminal graph))

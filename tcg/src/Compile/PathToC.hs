@@ -10,31 +10,61 @@ import Search.Search
 import Algebra.PolyRings
 import Compile.Monty
 
-compileKersToFieldAST :: Int -> [Kernel] -> IO (Int,[String],[FieldStmt a])
-compileKersToFieldAST n kers = 
- let inputVars = ["X["++show i++"]"|i<-[0..n-1]] in
-  do -- IO
-    lops <- maybeToIO "Path2C: Failed kernelToLO" (sequence (fmap kernelToLO kers))
-    foldl foldKernelSeries (return (0,inputVars,[])) lops
+type PruneFAST a = a -> FieldAST a -> FieldAST a
+type KernelCompileFunc a = (Int -> [Kernel] -> a -> PruneFAST a -> IO CProgram)
+type BoilerPlateFunc = (CProgram -> Int -> Int -> Maybe String)
 
 
-compilePathToC :: Field a => a -> (CProgram -> Int -> Int -> Maybe String) -> Path -> IO String
-compilePathToC field boiler_plate_func (Path start morphs) =
+compilePathToC :: Field a => a -> KernelCompileFunc a -> PruneFAST a -> BoilerPlateFunc -> Path -> IO String
+compilePathToC field compile_func prune_func boiler_plate_func (Path start morphs) =
   let kers = path_get_steps (Path start morphs)
       n = get_size start in
-        --ff = FField (get_prime start) in
       do -- IO
-        --monty <- maybeToIO "Path2C: failed monty_init" (monty_init (get_prime start))
         io_kers <- maybeToIO "Path2C: failed compileKernels" kers
-        (vc,vars,stmts) <-  compileKersToFieldAST n io_kers
-        simplified_fast <- return . removeNegation . (addNegation field) . removeOnes . removeZeros $ FieldAST stmts
-        --simplified_fast <- return . removeOnes . removeZeros $ FieldAST stmts
-        --simplified_fast <- return $ FieldAST stmts
-        prog <- return (translateFieldToC field simplified_fast)
-        progComplete <- return (CProgram ((initVars vc)++(get_stmts prog)++(assignResult vars)))
-        code <- maybeToIO "Failed adding boiler plate" (boiler_plate_func progComplete (get_size start) (get_prime start))
+        program <- compile_func n io_kers field prune_func
+        code <- maybeToIO "Failed adding boiler plate" (boiler_plate_func program (get_size start) (get_prime start))
         return code
+
+--
+
+pruneFast :: Field a => PruneFAST a
+pruneFast field = removeNegation . (addNegation field) . removeOnes . removeZeros 
+
+compileKersToFieldAST_inMem :: Field a => KernelCompileFunc a 
+compileKersToFieldAST_inMem n kers field prune_func =
+  let
+    inVars =  ["X["++show i++"]"|i<-[0..n-1]]
+    outVars =  ["Y["++show i++"]"|i<-[0..n-1]]
+  in
+  do
+    lops <- maybeToIO "Path2C: Failed kernelToLO" (sequence (fmap kernelToLO kers))
+    filtered_lops <- return ( filter_lops n lops)
+    (newInVars,newOutVars,stmts) <- foldl foldKernelSeries_inMem (return (inVars,outVars,[])) filtered_lops
+    fast <- return . (prune_func field) $ FieldAST stmts
+    prog <- return (translateFieldToC field fast)
+    return prog
   where
+    filter_lops :: Int -> [LOClass] -> [LOClass]
+    filter_lops n lops = let filtered = filter (not . isLOId) lops in
+      if mod (length filtered) 2 == 0 then
+        filtered++[LOId n]
+      else
+        filtered
+    
+compileKersToFieldAST :: Field a => KernelCompileFunc a
+compileKersToFieldAST n kers field prune_func = 
+  let inputVars = ["X["++show i++"]"|i<-[0..n-1]] in
+  do -- IO
+    lops <- maybeToIO "Path2C: Failed kernelToLO" (sequence (fmap kernelToLO kers))
+    filtered_lops <- return (filter_lops lops)
+    (vc,outVars,stmts) <- foldl foldKernelSeries (return (0,inputVars,[])) filtered_lops
+    fast <- return . (prune_func field) $ FieldAST stmts
+    prog <- return (translateFieldToC field fast)
+    progComplete <- return (CProgram ((initVars vc)++(get_stmts prog)++(assignResult outVars)))
+    return progComplete
+  where
+    filter_lops :: [LOClass] -> [LOClass]
+    filter_lops lops = filter (not . isLOId) lops
     initVars :: Int -> [CStatement]
     initVars vc = [CVarDeclare CInt ("t"++show i) |i<-[0..vc-1]]
     assignResult :: [String] -> [CStatement]
@@ -112,7 +142,7 @@ main_function steps =
     "}",
     "" ] 
   
-add_boiler_plate :: CProgram -> Int -> Int -> Maybe String
+add_boiler_plate :: BoilerPlateFunc -- CProgram -> Int -> Int -> Maybe String
 add_boiler_plate cp size prime =
   let
     body = translateCToStr cp
@@ -130,7 +160,7 @@ add_boiler_plate cp size prime =
   Just code
            
 
-add_boiler_plate_monty :: CProgram -> Int -> Int -> Maybe String
+add_boiler_plate_monty :: BoilerPlateFunc -- CProgram -> Int -> Int -> Maybe String
 add_boiler_plate_monty cp size prime =
   let
     body = translateCToStr cp

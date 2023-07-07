@@ -12,7 +12,11 @@ instance Eq (Int -> Maybe Ring) where
 instance Ord (Int -> Maybe Ring) where
   (<=) f1 f2 = (f1 0) <= (f2 0)
   
-data Ring = Base Int Int Int Int | Prod Int Int (Int -> Maybe Ring) | Quo Int Int Int Ring deriving (Ord)
+data Ring =
+  Base Int Int Int Int |
+  Prod Int Int (Int -> Maybe Ring) |
+  Quo Int Int Int Ring
+  deriving (Ord)
 
 instance Show Ring where
   show (Base n d b p) = "(Base "++show n++" "++show d++" "++show b++" "++show p++")"

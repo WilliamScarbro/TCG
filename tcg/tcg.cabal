@@ -28,6 +28,7 @@ executable tcg
     Search.GeneticCode,
     Search.Genetic,
     Search.Search,
+    Search.Decompose,
     Compile.KernelToFieldAST,
     Compile.PathToC,
     Compile.Compilers,
@@ -36,7 +37,9 @@ executable tcg
     Compile.Monty,
     Util.Util,
     Util.Logger,
-    Util.KernelTimer
+    Util.KernelTimer,
+    Test.PathToC_Test,
+    Test.Util
   build-depends:
        base,
        mtl >=2.2.2,
@@ -65,6 +68,7 @@ executable tcg-benchmark
     Search.GeneticCode,
     Search.Genetic,
     Search.Search,
+    Search.Decompose,
     Compile.KernelToFieldAST,
     Compile.PathToC,
     Compile.Compilers,

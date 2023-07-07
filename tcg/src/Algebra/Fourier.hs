@@ -34,7 +34,7 @@ data Morphism =
   Define |
   SwapQQ | SwapQP | --SwapPQ | SwapPP |
   IdR
-  deriving (Show,Eq)
+  deriving (Show,Eq,Ord)
 
 
 apply :: Morphism -> Ring -> Maybe Ring

@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include "Monty.h"
 
+
+#define fast_mod(x,R,R_log) (x-R*(x>>R_log))
+#define fast_div(x,R_log) (x>>R_log)
+
 monty_str monty_init(monty_str* monty,int P,int R,int P_prime,int R_inv,int R_log){
   monty->P=P;
   monty->R=R;
@@ -9,16 +13,16 @@ monty_str monty_init(monty_str* monty,int P,int R,int P_prime,int R_inv,int R_lo
   monty->R_log=R_log;
 }
 
-int fast_mod(int x,int log_m){
-  return x-(1<<log_m)*(x>>log_m);
-}
-
-int fast_div(int x,int log_m){
-  return x>>log_m;
-}
+//int fast_mod(int x,int log_m){
+//  return x-(1<<log_m)*(x>>log_m);
+//}
+//
+//int fast_div(int x,int log_m){
+//  return x>>log_m;
+//}
 
 int REDC(monty_str* monty, int T){
-  int m=fast_mod(fast_mod(T,monty->R_log)*(monty->P_prime),monty->R_log);
+  int m=fast_mod(fast_mod(T,monty->R,monty->R_log)*(monty->P_prime),monty->R,monty->R_log);
   int t=fast_div(T+m*(monty->P),monty->R_log);
   return t;
 }

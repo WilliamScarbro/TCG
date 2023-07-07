@@ -8,4 +8,4 @@ export TIMER_ITERS=100
 export MATCH_CONTEXT="Normalize"
 
 
-export COMPILER="Direct"
+export COMPILER="DirectMonty"

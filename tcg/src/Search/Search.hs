@@ -16,7 +16,7 @@ import Util.Util
 
 ---
 
-data Path = Path Ring [Morphism] deriving (Show,Eq)
+data Path = Path Ring [Morphism] deriving (Show,Eq,Ord)
 path_get_start :: Path -> Ring
 path_get_start (Path start morphs) = start
 
