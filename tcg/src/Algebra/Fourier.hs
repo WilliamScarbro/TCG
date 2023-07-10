@@ -113,7 +113,7 @@ matchRepeat (Quo n k d r) = do { mm <- morphismMatch; -- Match
 matchRepeat r = return []
 
 matchFactor :: Ring -> IO [Morphism]
-matchFactor (Base n d b p) = return [Factor k | k <-filter (\x -> x <= 32) (non_triv_factors n) ]
+matchFactor (Base n d b p) = return [Factor k | k <- (non_triv_factors n) ]
 matchFactor r = return []
 
 matchLabel :: Ring -> IO [Morphism]
