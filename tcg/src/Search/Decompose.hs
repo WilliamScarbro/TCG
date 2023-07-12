@@ -95,24 +95,9 @@ lib_check decompLib =
   in
     all id lib_correct
   
-
-factor4_decomp = lib_add_slice (Base 4 0 4 5,Prod 4 4 (\i -> Just (Base 1 i 4 5))) (lib_empty 10) :: IO DecompLib
---
-factor2_decomp = lib_add_slice (Base 4 0 4 5,Prod 4 2 (\i -> Just (Prod 2 2 (\j -> Just (Base 1 (2*j+i) 4 5))))) (lib_empty 10) :: IO DecompLib
-
-factor_2_4_decomp = lib_add_slices [(Base 4 0 4 5,Prod 4 4 (\i -> Just (Base 1 i 4 5))), (Base 4 0 4 5,Prod 4 2 (\i -> Just (Prod 2 2 (\j -> Just (Base 1 (2*j+i) 4 5)))))] (lib_empty 10) 
 --
 
 
--- given: a list of decompositions ((Ring,Ring) -> [Morphism]) and a morphism in context
--- find: a list of morphisms which have the same signature
-
---decompose_morph :: DecompLib -> Ring -> Morphism -> Maybe [[Morphism]]
---decompose_morph map ring morph =
---  do -- Maybe
---    codomain <- apply morph ring
---    Map.lookup (ring,codomain) map
---
 
 decompose_path :: Int -> DecompLib -> Path -> IO (DecompLib,[Path])
 decompose_path slice_len decompLib path =
@@ -192,8 +177,8 @@ decomp_search search_depth slice_len iterations path =
       do -- IO
         (updated_decomp_lib,paths) <- decompose_path slice_len decomp_lib path :: IO (DecompLib,[Path])
         updated_time_lib <- update_time_lib paths time_lib :: IO (Map.Map Path Float)
-        new_best_path <- return (get_best_path updated_time_lib) :: IO Path
-        logged_new_best_path <- logObj "DecompSearch: found new best " new_best_path >> return new_best_path
+        (new_best_path,new_best_time) <- return (get_best_path updated_time_lib) :: IO (Path,Float)
+        logged_new_best_path <- logObj "DecompSearch: found new best " (new_best_time,new_best_path) >> return new_best_path
         if path==logged_new_best_path then return path else
           ds_help updated_time_lib updated_decomp_lib slice_len (i-1) new_best_path
 
@@ -207,25 +192,9 @@ decomp_search search_depth slice_len iterations path =
             if Map.member path time_lib then return time_lib else
               timePath path "DecompGen" >>= (\time -> return (Map.insert path time time_lib))
    
-    get_best_path :: Map.Map Path Float -> Path
+    get_best_path :: Map.Map Path Float -> (Path,Float)
     get_best_path map =
       let
         as_list = Map.toList map
       in
-        fst (foldr (\(path,time) (best_path,best_time) -> if time < best_time then (path,time) else (best_path,best_time) ) (head as_list) (tail as_list))
---        
---update_time_lib :: [Path] -> Map.Map Path Float -> IO (Map.Map Path Float)
---update_time_lib paths time_lib =
---  foldr check_for_and_time (return time_lib) paths
---  where
---    check_for_and_time path io_time_lib =
---      do -- IO 
---        time_lib <- io_time_lib
---        if Map.member path time_lib then return time_lib else
---          timePath path "DecompGen" >>= (\time -> return (Map.insert path time time_lib))
---
---check_for_and_time path io_time_lib =
---  do -- IO
---    time_lib <- io_time_lib
---    if Map.member path time_lib then return time_lib else
---      timePath path "DecompGen" >>= (\time -> return (Map.insert path time time_lib))
+        foldr (\(path,time) (best_path,best_time) -> if time < best_time then (path,time) else (best_path,best_time) ) (head as_list) (tail as_list)

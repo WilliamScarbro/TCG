@@ -34,7 +34,7 @@ listFactorPaths n = let fn = fromIntegral n in
 --timeFactorPaths :: Int -> Int -> IO [(Int,Int,Float)]
 timeFactorPaths logn p = let n=round (2**(fromIntegral logn)) in sequence (do { -- []
   (k,t,l) <- listFactorPaths logn;
-  return (pure (\x -> (k,l,x)) <*>( (factorPath (Base n (-1) n p) k (-t) l) >>= (\p -> timePath p "Gen"))); })
+  return (pure (\x -> (k,l,x)) <*>( (factorPath (Base n 0 n p) k (-t) l) >>= (\p -> timePath p "Gen"))); })
 
 
 timeSample :: Ring -> StdGen -> Int -> IO [Float]
