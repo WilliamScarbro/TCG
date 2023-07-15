@@ -66,7 +66,8 @@ fourier_spec = do
     it "Pop size 8 samples 100" $
       (testSample (Base 4 4 8 17) (mkStdGen 10) 100) `shouldReturn` True
     
-          
+
+    it "factor path 512 (Factor 8) (Last 64)
       
 
 testSample :: Ring -> StdGen -> Int -> IO Bool

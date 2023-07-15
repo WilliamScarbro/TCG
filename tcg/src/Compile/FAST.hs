@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Compile.FAST where 
 
 import Compile.CAST
@@ -20,7 +22,15 @@ data FieldExpr a
   | Variable String
   | FieldOpExpr (FieldOp a) deriving (Show,Eq)
 
-data FieldStmt a = FieldAssignment Identifier (FieldExpr a) deriving (Show,Eq)
+instance Show (String -> [FieldStmt a]) where
+  show stmts_func = show (stmts_func "i")
+
+instance Eq (String -> [FieldStmt a]) where
+  (==) f1 f2 = (==) (f1 "i") (f2 "i")
+  
+data FieldStmt a = FieldAssignment Identifier (FieldExpr a)
+  | FieldLoop (Int,Int) (String -> [FieldStmt a]) -- (start,end) indexVar assignment_expr
+  deriving (Show,Eq)
 
 data FieldAST a = FieldAST [FieldStmt a] deriving (Show,Eq)
 
@@ -43,6 +53,7 @@ removeZeros :: FieldAST a -> FieldAST a
 removeZeros (FieldAST stmts) = FieldAST (fmap rz_stmt stmts)
   where
     rz_stmt (FieldAssignment id expr) = (FieldAssignment id (rz_expr expr))
+    rz_stmt (FieldLoop start_end stmt_func) = FieldLoop start_end (fmap rz_stmt . stmt_func)
     rz_expr (FieldOpExpr fo) = rz_fop fo
     rz_expr x = x
     rz_fop (FAdd e1 e2) = rz_fop_help e1 e2 addf
@@ -78,6 +89,7 @@ removeOnes :: FieldAST a -> FieldAST a
 removeOnes (FieldAST stmts) = FieldAST (fmap ro_stmt stmts)
   where
     ro_stmt (FieldAssignment id expr) = (FieldAssignment id (ro_expr expr))
+    ro_stmt (FieldLoop start_end stmt_func) = FieldLoop start_end (fmap ro_stmt . stmt_func)
     ro_expr (FieldOpExpr fo) = ro_fop fo
     ro_expr x = x
     ro_fop (FAdd e1 e2) = ro_fop_help e1 e2 addf
@@ -108,6 +120,7 @@ addNegation :: Field a => a -> FieldAST a -> FieldAST a
 addNegation field (FieldAST stmts) = FieldAST (fmap (an_stmt field) stmts)
   where
     an_stmt field (FieldAssignment id expr) = (FieldAssignment id (an_expr field expr))
+    an_stmt field (FieldLoop start_end stmt_func) = FieldLoop start_end (fmap (an_stmt field) . stmt_func)
     an_expr field (FieldOpExpr fo) = add_negation field fo
     an_expr field x = x
 
@@ -138,6 +151,7 @@ removeNegation :: FieldAST a -> FieldAST a
 removeNegation (FieldAST stmts) = FieldAST (fmap rn_stmt stmts)
   where
     rn_stmt (FieldAssignment id expr) = (FieldAssignment id (rn_expr expr))
+    rn_stmt (FieldLoop start_end stmt_func) = FieldLoop start_end (fmap rn_stmt . stmt_func)
     rn_expr (FieldOpExpr fo) = remove_negation fo
     rn_expr x = x
 
@@ -218,7 +232,8 @@ translateFieldToC field (FieldAST stmts) =
 
 translateFieldStmt :: Field a => a -> FieldStmt a -> CStatement
 translateFieldStmt field (FieldAssignment ident fexpr) = CAssignment ident (translateFieldExpr field fexpr)
-
+translateFieldStmt field (FieldLoop start_end stmts_func) = CLoop start_end ((fmap (translateFieldStmt field)) . stmts_func)
+  
 translateFieldExpr :: Field a => a -> FieldExpr a -> CExpr
 translateFieldExpr field (Constant c) = fieldElFromInt field c
 translateFieldExpr field (Variable v) = Identifier v
@@ -235,27 +250,4 @@ translateFieldOp field (FSubtract fe1 fe2) = translateFieldOp_help field fe1 fe2
 translateFieldOp field (FMultiply fe1 fe2) = translateFieldOp_help field fe1 fe2 mult
 translateFieldOp field (FDivide fe1 fe2) = translateFieldOp_help field fe1 fe2 divide
 translateFieldOp field (FNeg fe) = neg field (translateFieldExpr field fe)
-                                             
--- Montgomery's Trick
-
---translateFieldToC_monty :: Field a => a -> Monty -> FieldAST a -> CProgram
---translateFieldToC_monty field monty (FieldAST stmts) =
---  let c_stmts = fmap (translateFieldStmt_monty field monty) stmts in
---    CProgram c_stmts
---
---translateFieldStmt_monty :: Field a => a -> Monty -> FieldStmt a -> CStatement
---translateFieldStmt_monty field monty (FieldAssignment ident fexpr) = CAssignment ident (traslateFieldExpr_monty field monty fexpr)
---
---translateFieldExpr_monty :: Field a => a -> Monty -> FieldExpr a -> CExpr
---translateFieldExpr_monty field monty (Constant c) = Literal (IntLiteral c)
---translateFieldExpr_monty field monty (Variable V) = Identifier v
---translateFieldExpr_monty field monty (FieldOpExpr fop) = translateFieldOp_monty field monty fop
---
---translateFieldOp_maybe :: Field a => a -> FieldOp a -> CExpr
---translateFieldOp field (FAdd fe1 fe2) = translateFieldOp_help field fe1 fe2 add
---translateFieldOp field (FSubtract fe1 fe2) = translateFieldOp_help field fe1 fe2 sub
---translateFieldOp field (FMultiply fe1 fe2) = translateFieldOp_help field fe1 fe2 mult
---translateFieldOp field (FDivide fe1 fe2) = translateFieldOp_help field fe1 fe2 divide
---translateFieldOp field (FNeg fe) = neg field (translateFieldExpr field fe)
---
---
+                                   

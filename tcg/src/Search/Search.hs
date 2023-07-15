@@ -166,7 +166,7 @@ buildPathForest_branch :: (Ring,Morphism) -> IO (Kernel, [(Ring, Morphism)])
 buildPathForest_branch (r,m) = do { -- IO
   mm <- morphismMatch;
   morphs <- match mm r;
-  r2 <- maybeToIO "buildPathForest calling apply" (apply m r);
+  r2 <- maybeToIO ("buildPathForest calling apply"++show (m,r)) (apply m r);
   k <- maybeToIO "buildPathForest calling morphism_to_kernel" (morphism_to_kernel m r);
   return (k,[(r2,mi) | mi <- morphs ]) }
 
@@ -182,7 +182,14 @@ buildRingTree_branch r = do { --IO
   morphs <- match mm r; -- [Morphs]
   rings <- maybeToIO "buildRingTree calling apply" (sequence (fmap (\m -> apply m r) morphs));
   return (r,rings); }
-  
+
+--buildMorphTree :: Ring -> IO [(Tree Morph)]
+--buildMorphTree start = do
+--  mm <- morphismMatch :: IO Match
+--  morphs <- match mm start :: IO [Morphism]
+--  initial <- return [(start,m) | m<- morphs] :: IO [(Ring,Morphism)]
+--  unfoldForestM buildMorphTree 
+                                                       
 --(r,foldl (++) [] (fmap maybeToList (fmap (\m -> apply m r) (match matchMorphism r))))
 
 --

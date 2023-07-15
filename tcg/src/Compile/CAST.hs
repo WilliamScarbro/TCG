@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Compile.CAST where
 
 import Data.Map.Strict (Map)
@@ -9,10 +11,16 @@ data CProgram = CProgram [CStatement] deriving (Eq,Show)
 
 -- C AST
 
+instance Show (String -> [CStatement]) where
+  show stmts_func = show (stmts_func "i")
+
+instance Eq (String -> [CStatement]) where
+  (==) f1 f2 = (==) (f1 "i") (f2 "i")
+
 data CStatement
   = CAssignment Identifier CExpr
   | CVarDeclare CType Identifier
-  | CForLoop Identifier CExpr CExpr CExpr [CStatement]
+  | CLoop (Int,Int) (String -> [CStatement])
   deriving (Eq,Show)
   -- | If CExpr [tatement] (Maybe [Statement])
   -- | While CExpr [Statement]
@@ -68,12 +76,26 @@ get_stmts :: CProgram -> [CStatement]
 get_stmts (CProgram stmts) = stmts
 --
 
-translateCToStr :: CProgram -> [String]
-translateCToStr (CProgram stmts) = map translateStmt stmts
+_multiply_string :: String -> Int -> String
+_multiply_string str val = foldr (++) "" [str |i<-[0..val-1]]
 
-translateStmt :: CStatement -> String
-translateStmt (CAssignment ident expr) = ident ++ " = " ++ translateExpr expr ++ ";"
-translateStmt (CVarDeclare ctype ident) = translateCType ctype ++ " " ++ ident ++ ";"
+--
+
+translateCToStr :: CProgram -> [String]
+translateCToStr (CProgram stmts) = map (translateStmt 0) stmts
+
+translateStmt :: Int -> CStatement -> String
+translateStmt depth (CAssignment ident expr) = (_multiply_string " " depth) ++ ident ++ " = " ++ translateExpr expr ++ ";"
+translateStmt depth (CVarDeclare ctype ident) = (_multiply_string " " depth) ++ translateCType ctype ++ " " ++ ident ++ ";"
+translateStmt depth (CLoop (start,end) stmts_func) =
+  let
+    index_var = "i"++show depth
+    stmts = fmap (translateStmt (depth+1)) (stmts_func index_var)
+  in
+    (_multiply_string " " depth)++"for ("++index_var++"="++show start++"; "++index_var++"<"++show end++"; "++index_var++"++){"++
+    (foldr (++) "" stmts)++
+    "}"
+    
 -- translate If, While, Return statements
 
 

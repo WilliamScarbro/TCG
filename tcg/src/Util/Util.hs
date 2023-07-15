@@ -19,3 +19,13 @@ showStrTuple t =
 
 log2_round :: Int -> Int
 log2_round x = round ((log (fromIntegral x)) / (log 2))
+
+replaceAt :: Int -> Int -> [[a]] -> [a] -> [[a]]
+replaceAt _ _ _ [] = []
+replaceAt from to r xs =
+  let
+    prefix = take from xs
+    suffix = drop to xs
+  in
+    [prefix ++ r_el ++ suffix |r_el<-r]
+

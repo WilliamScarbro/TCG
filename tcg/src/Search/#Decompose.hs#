@@ -1,7 +1,6 @@
 module Search.Decompose where
 
 
-import Search.Search
 
 import Data.List
 import Data.Maybe
@@ -11,13 +10,13 @@ import System.Random
 import Control.Monad
 import Data.Maybe
 
+import Search.Search
 import Algebra.FField
 import Algebra.PolyRings
 import Algebra.NTT
 import Algebra.Fourier
 import Util.Logger
 import Util.Util
-
 import Compile.Compilers
 
 
@@ -96,13 +95,7 @@ lib_check decompLib =
     all id lib_correct
 
 
-spiral_decomp_lib :: Int -> (Int -> [Morphism]) -> DecompLib
-spiral_decomp_lib n genFunc =
-  let
-    rewrites = do --List
-      factor <- non_triv_factors n
-      [ 
---
+    --
 
 
 
@@ -152,36 +145,6 @@ get_alt_morphs decompLib slices states morphs =
     fmap join io_alt_morphs
 
 
-replaceAt :: Int -> Int -> [[a]] -> [a] -> [[a]]
-replaceAt _ _ _ [] = []
-replaceAt from to r xs =
-  let
-    prefix = take from xs
-    suffix = drop to xs
-  in
-    [prefix ++ r_el ++ suffix |r_el<-r]
-
-
--- does not modify DecompLib
--- only uses slices of length 1
-decompose_path_spiral ::  DecompLib -> Path -> IO [Path]
-decompose_path_spiral decompLib path =
-  let
-    morphs = path_get_morphs path :: [Morphism]
-    start = path_get_start path :: Ring
-    slices = [(i,i+1) |i<-[0..(length morphs)-1]] :: [(Int,Int)]
-  in
-    join (maybeToIO "decompose_path_spiral: failed"
-          ( do -- Maybe
-              states <- path_get_states path :: Maybe [Ring]
-              return
-                (do -- IO
-                    alt_morphs <- get_alt_morphs decompLib slices states morphs :: IO [[Morphism]]
-                    alt_paths <- return (fmap (\morphs -> Path start morphs) alt_morphs) :: IO [Path]
-                    return (alt_paths) :: IO ([Path])
-                ) :: Maybe (IO ([Path]))
-          ))
- 
 _check_decomp_paths :: Path -> [Path] -> IO Bool
 _check_decomp_paths path alt_paths =
   do -- IO

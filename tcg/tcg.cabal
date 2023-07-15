@@ -24,17 +24,18 @@ executable tcg
     Algebra.NTT,
     Algebra.PolyRings,
     Compile.CompileKernel,
-    Interface.PolyMult,
     Search.GeneticCode,
     Search.Genetic,
     Search.Search,
     Search.Decompose,
+    Search.Spiral,
     Compile.KernelToFieldAST,
     Compile.PathToC,
     Compile.Compilers,
     Compile.CAST,
     Compile.FAST,
     Compile.Monty,
+    Compile.LOClasses,
     Util.Util,
     Util.Logger,
     Util.KernelTimer,
@@ -64,7 +65,6 @@ executable tcg-benchmark
     Algebra.NTT,
     Algebra.PolyRings,
     Compile.CompileKernel,
-    Interface.PolyMult,
     Search.GeneticCode,
     Search.Genetic,
     Search.Search,
@@ -75,6 +75,7 @@ executable tcg-benchmark
     Compile.CAST,
     Compile.FAST,
     Compile.Monty,
+    Compile.LOClasses,
     Util.Util,
     Util.Logger,
     Util.KernelTimer
@@ -93,6 +94,28 @@ executable tcg-benchmark
        hspec-discover >= 2.7
   hs-source-dirs: src
   default-language:    Haskell2010
+
+
+Test-Suite Search-Test
+  type:               exitcode-stdio-1.0
+  main-is:            Test/Search_Tests.hs
+  hs-source-dirs:     src
+  other-modules:
+    Search.Decompose
+  build-depends:
+    base,
+    mtl >=2.2.2,
+    containers >= 0.6.0.1,
+    matrix >= 0.3.6.1,
+    random >= 1.2.1.1,
+    process >= 1.6.3.0,
+    regex-posix >= 0.96.0.1,
+    random-shuffle >= 0.0.4,
+    transformers >= 0.6.1.0,
+    hashable >= 1.4.2.0,
+    hspec >= 2.7,
+    hspec-discover >= 2.7
+  default-language: Haskell2010
 
 Test-Suite Generate-Test
   type:               exitcode-stdio-1.0

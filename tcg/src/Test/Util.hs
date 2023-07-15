@@ -72,3 +72,5 @@ spiral_path12 = Path (Base 12 0 12 37) [(Label 4), (Repeat 4 (Factor 3)), SwapQP
 spiral_path12_nw = Path (Base 12 12 24 73) [(Label 4), (Repeat 4 (Factor 3)), SwapQP, (Extend 3 (Define)), (Extend 3 (Norm)), (Extend 3 (Repeat 1 (Factor 4))), (Extend 3 SwapQP), (Extend 3 (Extend 4 Define))]
 
 spiral_path8 = Path (Base 8 0 8 17) [(Label 4), (Repeat 4 (Factor 2)), SwapQP, (Extend 2 (Define)), (Extend 2 (Norm)), (Extend 2 (Repeat 1 (Factor 4))), (Extend 2 SwapQP), (Extend 2 (Extend 4 Define))]
+
+true_spiral_path6 = Path (Base 6 0 6 7) [(Label 2), (Repeat 2 (Factor 3)), SwapQP, (Extend 3 (Define)), (Extend 3 (Norm)), (Extend 3 (Repeat 1 (Factor 2))), (Extend 3 SwapQP), (Extend 3 (Extend 2 Define)), SwapJoinProd]

@@ -2,6 +2,7 @@ module Compile.PathToC where
 
 import Compile.FAST
 import Compile.CAST
+import Compile.LOClasses
 import Compile.KernelToFieldAST
 import Algebra.NTT
 import Algebra.FField

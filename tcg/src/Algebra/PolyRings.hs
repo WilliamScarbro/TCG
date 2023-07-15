@@ -91,7 +91,7 @@ swapQQ _ = Nothing
 swapQP :: Ring -> Maybe Ring
 swapQP (Quo n0 k0 d0 (Prod n1 k1 f)) =
   let
-    (n0',n1') = newDims(n0,k0,n1,k1) in
+    (n0',n1') = newDims (n0,k0,n1,k1) in
   Just (Prod n1' k1 (\i -> (f i) >>= (\r -> Just (Quo n0' k0 d0 r))))
 swapQP _ = Nothing
 
@@ -102,15 +102,29 @@ swapQP _ = Nothing
 --    (n1,k1,d1,_) <- quo_get_data ring
 --    (n0',n1') <- newDims(n0,k0,n1,k1)
 --  Just (Quo n1' k1 d1 (Prod n0' k0 (\i -> r)))
-                        
---swapPP :: Ring -> Maybe Ring
---swapPP (Prod n0 k0 f) =
---  let
---    ring <- f 0
---    (n1,k1,_) <- prod_get_data ring
---    (n0',n1') <- newDims(n0,k0,n1,k1)
---  Just (Prod n1' k1 (\i -> (g i) >>= (\r -> )
-                                                                              
+
+_prod_double_index :: (Int -> Maybe Ring) -> Int -> Int -> Maybe Ring
+_prod_double_index f i j =
+  do
+    prod <- f i
+    (_,_,f2) <- prod_get_data prod
+    f2 j
+    
+swapPP :: Ring -> Maybe Ring
+swapPP (Prod n0 k0 f0) =
+  do --Maybe
+    ring <- f0 0 :: Maybe Ring
+    (n1,k1,_) <- prod_get_data ring
+    (n0',n1') <- return (newDims (n0,k0,n1,k1))
+    Just (Prod n1' k1 (\j -> Just (Prod n0' k0 (\i -> _prod_double_index f0 i j))))
+
+joinProd :: Ring -> Maybe Ring
+joinProd (Prod n0 k0 f0) =
+  do
+    prod <- f0 0 :: Maybe Ring
+    (n1,k1,_) <- prod_get_data prod
+    Just (Prod n0 (k0*k1) (\i -> _prod_double_index f0 (div i n1) (mod i n1)))
+      
 --pushin :: Ring -> Maybe Ring
 --pushin (Quo nq kq d0 (Prod np kp f)) = let nf = div np kp in
 --  let new_nq = nf*kq in
