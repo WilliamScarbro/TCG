@@ -1,7 +1,6 @@
 module Search.Decompose where
 
 
-import Search.Search
 
 import Data.List
 import Data.Maybe
@@ -11,13 +10,13 @@ import System.Random
 import Control.Monad
 import Data.Maybe
 
+import Search.Search
 import Algebra.FField
 import Algebra.PolyRings
 import Algebra.NTT
 import Algebra.Fourier
 import Util.Logger
 import Util.Util
-
 import Compile.Compilers
 
 
@@ -96,13 +95,7 @@ lib_check decompLib =
     all id lib_correct
 
 
-spiral_decomp_lib :: Int -> (Int -> [Morphism]) -> DecompLib
-spiral_decomp_lib n genFunc =
-  let
-    rewrites = do --List
-      factor <- non_triv_factors n
-      [ 
---
+    --
 
 
 
@@ -119,13 +112,12 @@ decompose_path slice_len decompLib path =
               state_slices <- return (fmap (\(start,end) -> (states!!start,states!!end)) slices) :: Maybe [(Ring,Ring)]
               return
                 (do -- IO
-                    updated_DL <- lib_add_slices state_slices decompLib :: IO DecompLib
-                    alt_morphs <- get_alt_morphs updated_DL slices states morphs :: IO [[Morphism]]
-                    alt_paths <- return (fmap (\morphs -> Path start morphs) alt_morphs) :: IO [Path]
-                    return (updated_DL,alt_paths) :: IO (DecompLib,[Path])
+                  updated_DL <- lib_add_slices state_slices decompLib :: IO DecompLib
+                  alt_morphs <- get_alt_morphs updated_DL slices states morphs :: IO [[Morphism]]
+                  alt_paths <- return (fmap (\morphs -> Path start morphs) alt_morphs) :: IO [Path]
+                  return (updated_DL,alt_paths) :: IO (DecompLib,[Path])
                 ) :: Maybe (IO (DecompLib,[Path]))
           ))
-     
    where
      get_slices :: Int -> Int -> [(Int,Int)]
      get_slices max_len len =
@@ -152,36 +144,6 @@ get_alt_morphs decompLib slices states morphs =
     fmap join io_alt_morphs
 
 
-replaceAt :: Int -> Int -> [[a]] -> [a] -> [[a]]
-replaceAt _ _ _ [] = []
-replaceAt from to r xs =
-  let
-    prefix = take from xs
-    suffix = drop to xs
-  in
-    [prefix ++ r_el ++ suffix |r_el<-r]
-
-
--- does not modify DecompLib
--- only uses slices of length 1
-decompose_path_spiral ::  DecompLib -> Path -> IO [Path]
-decompose_path_spiral decompLib path =
-  let
-    morphs = path_get_morphs path :: [Morphism]
-    start = path_get_start path :: Ring
-    slices = [(i,i+1) |i<-[0..(length morphs)-1]] :: [(Int,Int)]
-  in
-    join (maybeToIO "decompose_path_spiral: failed"
-          ( do -- Maybe
-              states <- path_get_states path :: Maybe [Ring]
-              return
-                (do -- IO
-                    alt_morphs <- get_alt_morphs decompLib slices states morphs :: IO [[Morphism]]
-                    alt_paths <- return (fmap (\morphs -> Path start morphs) alt_morphs) :: IO [Path]
-                    return (alt_paths) :: IO ([Path])
-                ) :: Maybe (IO ([Path]))
-          ))
- 
 _check_decomp_paths :: Path -> [Path] -> IO Bool
 _check_decomp_paths path alt_paths =
   do -- IO
@@ -200,7 +162,7 @@ decomp_search search_depth slice_len iterations path =
   ds_help Map.empty (lib_empty search_depth) slice_len iterations path
   where
     ds_help :: Map.Map Path Float -> DecompLib -> Int -> Int -> Path -> IO Path
-    ds_help _ _ _ 0 _ = return path
+    ds_help _ _ _ 0 path = return path
     ds_help time_lib decomp_lib slice_len i path =
       do -- IO
         (updated_decomp_lib,paths) <- decompose_path slice_len decomp_lib path :: IO (DecompLib,[Path])
@@ -227,11 +189,6 @@ decomp_search search_depth slice_len iterations path =
       in
         foldr (\(path,time) (best_path,best_time) -> if time < best_time then (path,time) else (best_path,best_time) ) (head as_list) (tail as_list)
 
-replace_swapjoinprod :: Path -> Path
-replace_swapjoinprod (Path start morphs) = Path start (fmap rsjp_helper morphs)
-  where
-    rsjp_helper SwapJoinProd = JoinProd
-    rsjp_helper x = x
 
 
 --spiral_search :: Int -> Int -> Int -> Path -> IO Path

@@ -9,6 +9,8 @@ module Algebra.FField where
 
 import qualified Data.Set as Set
 
+import Data.List
+
 --import AbstractAlgebra.Fields
 
 class Residue a where
@@ -143,5 +145,12 @@ class ResidueRing a => FiniteField a where
   divi :: a -> a -> Maybe a
   divi x y = ( inv y ) >>= mult x
 
+factor_pairs :: Integral a => a -> [(a,a)]
+factor_pairs n =
+  let
+    factors = filter (\x -> x /= n) (non_triv_factors n)
+  in
+    nub [(f,div n f) |f<-factors]
+    
 instance FiniteField ResInt where
   inv = ff_inv

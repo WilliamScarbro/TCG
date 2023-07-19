@@ -227,6 +227,8 @@ sizeof (KId n) = n
 sizeof (Kernel_Extend n _ f) = n*(squashMaybeInt (f 0) sizeof)
 sizeof (Kernel_Repeat n _ k) = n*(sizeof k)
 
+isIdKer (KId _) = True
+isIdKer _ = False
 
 --define_kernel :: Kernel -> Maybe LinearOp FF
 --define_kernel (Phi n k d b p) = phi 

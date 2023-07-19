@@ -211,7 +211,7 @@ buildRingTree_branch r = do { --IO
 --
 
 
-          
+           
 strTree :: Show a => Tree a -> String
 strTree (Node x rest) = show x ++ (foldr (++) "" [ (strTree r) | r <- rest] )
 

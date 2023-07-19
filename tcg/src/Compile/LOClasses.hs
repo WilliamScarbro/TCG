@@ -15,8 +15,8 @@ data LOClass
   | LOId Int
 
 instance Show LOClass where
-  show (Diagonal n f) = "Diagonal "++show n
-  show (Permutation n f) = "Permutation "++show n
+  show (Diagonal n f) = "Diagonal "++show n++":  "++(foldr (++) "" [show (f i)++"," |i<-[0..n-1]])
+  show (Permutation n f) = "Permutation "++show n++" "++show [f i|i<-[0..n-1]]
   show (Square n f) = "Square "++show n
   show (ITensor n k lo) = "( "++show lo++" (ox) I_"++show k++")"
   show (Partition m arr) = "Partition "++show m++" "++show arr
@@ -24,6 +24,10 @@ instance Show LOClass where
 
 isLOId (LOId _) = True
 isLOId _ = False
+
+isDiag (Diagonal _ _) = True
+isDiag _ = False
+
 
 kernelToLO :: Kernel -> Maybe LOClass
 kernelToLO (Phi n k d b p) =

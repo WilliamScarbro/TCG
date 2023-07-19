@@ -18,112 +18,150 @@ import Compile.Compilers
 import System.Environment
 
 path2c_spec :: Spec
-path2c_spec = do
-  describe "compile Path to C and test results" $ do
+path2c_spec =
+  let
+    path_test compiler description path =
+      it (description++", compiler: "++compiler) $ do
+        setEnv "COMPILER" compiler
+        logObj ("generate test "++compiler) path
+        (result,cor) <- testForwardPath2 path
+        return (result == cor) `shouldReturn` True
+        
+    factor_path4_test compiler = path_test compiler "compile Factor 4 path" factor_path4
+    factor_path8_test compiler = path_test compiler "compile Factor 8 path" factor_path8
+    spiral_path6_test compiler = path_test compiler "compile spiral 6 path" spiral_path6
+    spiral_path8_test compiler = path_test compiler "compile spiral 8 path" spiral_path8
+    spiral_path12_test compiler = path_test compiler "compile spiral 12 path" spiral_path12
 
-    -- Direct
-    it "compile Factor 4 path Direct" $ do -- IO
-      set_env <- setEnv "COMPILER" "Direct"
-      (result,cor) <- return set_env >> testForwardPath2 factor_path4
-      return (result == cor) `shouldReturn` True 
+    sample_test compiler description start size =
+      it (description++", compiler: "++compiler) $ do
+        setEnv "COMPILER" compiler
+        (testSample start (mkStdGen 10) size) `shouldReturn` True
 
-    it "compile Factor 8 path  Direct" $ do -- IO
-      set_env <- setEnv "COMPILER" "Direct"
-      (result,cor) <- return set_env >> testForwardPath2 factor_path8
-      return (result == cor) `shouldReturn` True
+    sample_20_of_size_16 compiler = sample_test compiler "compile sample 20 of size 16" (Base 16 0 16 17) 20
+    sample_20_of_size_32 compiler = sample_test compiler "compile sample 20 of size 32" (Base 32 0 32 257) 20
 
-    it "compile 6-way spiral size 6 Direct" $ do
-      set_env <- setEnv "COMPILER" "Direct"
-      (result,cor) <- return set_env >> testForwardPath2 spiral_path6
-      return (result == cor) `shouldReturn` True
-
-    it "compile 6-way spiral size 8 Direct" $ do
-      set_env <- setEnv "COMPILER" "Direct"
-      (result,cor) <- return set_env >> testForwardPath2 spiral_path8
-      return (result == cor) `shouldReturn` True
-
-    it "compile 6-way spiral size 12 Direct" $ do
-      set_env <- setEnv "COMPILER" "Direct"
-      (result,cor) <- return set_env >> testForwardPath2 spiral_path12
-      return (result == cor) `shouldReturn` True    
- 
-    it "compile sample size 64 number 20 Direct" $ do
-      set_env <- setEnv "COMPILER" "Direct"
-      ((return set_env) >> (testSample (Base 64 64 128 257) (mkStdGen 10) 20)) `shouldReturn` True
-    
-    it "compile sample size 16 number 20 Direct" $ do
-      set_env <- setEnv "COMPILER" "Direct"
-      ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
- 
-
-    -- DirectMonty
-    it "compile Factor 4 path DirectMonty" $ do -- IO
-      set_env <- setEnv "COMPILER" "DirectMonty"
-      (result,cor) <- return set_env >> testForwardPath2 factor_path4
-      return (result == cor) `shouldReturn` True
+    test_suite compiler = do
+      factor_path4_test compiler 
+      factor_path8_test compiler 
+      spiral_path6_test compiler 
+      spiral_path8_test compiler 
+      spiral_path12_test compiler
+      sample_20_of_size_16 compiler 
+      sample_20_of_size_32 compiler 
       
-    it "compile Factor 8 path  DirectMonty" $ do -- IO
-      set_env <- setEnv "COMPILER" "DirectMonty"
-      (result,cor) <- return set_env >> testForwardPath2 factor_path8
-      return (result == cor) `shouldReturn` True
 
-    it "compile 6-way spiral size 6 DirectMonty" $ do
-      set_env <- setEnv "COMPILER" "DirectMonty"
-      (result,cor) <- return set_env >> testForwardPath2 spiral_path6
-      return (result == cor) `shouldReturn` True
+ in
+    describe "compile Path to C and test results" $ do
+      test_suite "Direct"
 
-    it "compile 6-way spiral size 8 DirectMonty" $ do
-      set_env <- setEnv "COMPILER" "DirectMonty"
-      (result,cor) <- return set_env >> testForwardPath2 spiral_path8
-      return (result == cor) `shouldReturn` True
+      test_suite "DirectMonty"
 
-    it "compile 6-way spiral size 12 DirectMonty" $ do
-      set_env <- setEnv "COMPILER" "DirectMonty"
-      (result,cor) <- return set_env >> testForwardPath2 spiral_path12
-      return (result == cor) `shouldReturn` True    
-
-    it "compile sample size 64 number 20 DirectMonty" $ do
-      set_env <- setEnv "COMPILER" "DirectMonty"
-      ((return set_env) >> (testSample (Base 64 64 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+      test_suite "DirectMontyInMem"
     
-    it "compile sample size 16 number 20 DirectMonty" $ do
-      set_env <- setEnv "COMPILER" "DirectMonty"
-      ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+    -- Direct
+    -- it "compile Factor 4 path Direct" $ do -- IO
+    --   set_env <- setEnv "COMPILER" "Direct"
+    --   (result,cor) <- return set_env >> testForwardPath2 factor_path4
+    --   return (result == cor) `shouldReturn` True 
+
+    -- it "compile Factor 8 path  Direct" $ do -- IO
+    --   set_env <- setEnv "COMPILER" "Direct"
+    --   (result,cor) <- return set_env >> testForwardPath2 factor_path8
+    --   return (result == cor) `shouldReturn` True
+
+    -- it "compile 6-way spiral size 6 Direct" $ do
+    --   set_env <- setEnv "COMPILER" "Direct"
+    --   (result,cor) <- return set_env >> testForwardPath2 spiral_path6
+    --   return (result == cor) `shouldReturn` True
+
+    -- it "compile 6-way spiral size 8 Direct" $ do
+    --   set_env <- setEnv "COMPILER" "Direct"
+    --   (result,cor) <- return set_env >> testForwardPath2 spiral_path8
+    --   return (result == cor) `shouldReturn` True
+
+    -- it "compile 6-way spiral size 12 Direct" $ do
+    --   set_env <- setEnv "COMPILER" "Direct"
+    --   (result,cor) <- return set_env >> testForwardPath2 spiral_path12
+    --   return (result == cor) `shouldReturn` True    
+ 
+    -- it "compile sample size 64 number 20 Direct" $ do
+    --   set_env <- setEnv "COMPILER" "Direct"
+    --   ((return set_env) >> (testSample (Base 64 64 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+    
+    -- it "compile sample size 16 number 20 Direct" $ do
+    --   set_env <- setEnv "COMPILER" "Direct"
+    --   ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+ 
+
+    -- -- DirectMonty
+    -- it "compile Factor 4 path DirectMonty" $ do -- IO
+    --   set_env <- setEnv "COMPILER" "DirectMonty"
+    --   (result,cor) <- return set_env >> testForwardPath2 factor_path4
+    --   return (result == cor) `shouldReturn` True
+      
+    -- it "compile Factor 8 path  DirectMonty" $ do -- IO
+    --   set_env <- setEnv "COMPILER" "DirectMonty"
+    --   (result,cor) <- return set_env >> testForwardPath2 factor_path8
+    --   return (result == cor) `shouldReturn` True
+
+    -- it "compile 6-way spiral size 6 DirectMonty" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMonty"
+    --   (result,cor) <- return set_env >> testForwardPath2 spiral_path6
+    --   return (result == cor) `shouldReturn` True
+
+    -- it "compile 6-way spiral size 8 DirectMonty" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMonty"
+    --   (result,cor) <- return set_env >> testForwardPath2 spiral_path8
+    --   return (result == cor) `shouldReturn` True
+
+    -- it "compile 6-way spiral size 12 DirectMonty" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMonty"
+    --   (result,cor) <- return set_env >> testForwardPath2 spiral_path12
+    --   return (result == cor) `shouldReturn` True    
+
+    -- it "compile sample size 64 number 20 DirectMonty" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMonty"
+    --   ((return set_env) >> (testSample (Base 64 64 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+    
+    -- it "compile sample size 16 number 20 DirectMonty" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMonty"
+    --   ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
 
   
-    -- DirectMontyInMem
-    it "compile Factor 4 path DirectMontyInMem" $ do -- IO
-      set_env <- setEnv "COMPILER" "DirectMontyInMem"
-      (result,cor) <- return set_env >> testForwardPath2 factor_path4
-      return (result == cor) `shouldReturn` True
+    -- -- DirectMontyInMem
+    -- it "compile Factor 4 path DirectMontyInMem" $ do -- IO
+    --   set_env <- setEnv "COMPILER" "DirectMontyInMem"
+    --   (result,cor) <- return set_env >> testForwardPath2 factor_path4
+    --   return (result == cor) `shouldReturn` True
       
-    it "compile Factor 8 path  DirectMontyInMem" $ do -- IO
-      set_env <- setEnv "COMPILER" "DirectMontyInMem"
-      (result,cor) <- return set_env >> testForwardPath2 factor_path8
-      return (result == cor) `shouldReturn` True
+    -- it "compile Factor 8 path  DirectMontyInMem" $ do -- IO
+    --   set_env <- setEnv "COMPILER" "DirectMontyInMem"
+    --   (result,cor) <- return set_env >> testForwardPath2 factor_path8
+    --   return (result == cor) `shouldReturn` True
 
-    it "compile 6-way spiral size 6 DirectMontyInMem" $ do
-      set_env <- setEnv "COMPILER" "DirectMontyInMem"
-      (result,cor) <- return set_env >> testForwardPath2 spiral_path6
-      return (result == cor) `shouldReturn` True
+    -- it "compile 6-way spiral size 6 DirectMontyInMem" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMontyInMem"
+    --   (result,cor) <- return set_env >> testForwardPath2 spiral_path6
+    --   return (result == cor) `shouldReturn` True
 
-    it "compile 6-way spiral size 8 DirectMontyInMem" $ do
-      set_env <- setEnv "COMPILER" "DirectMontyInMem"
-      (result,cor) <- return set_env >> testForwardPath2 spiral_path8
-      return (result == cor) `shouldReturn` True
+    -- it "compile 6-way spiral size 8 DirectMontyInMem" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMontyInMem"
+    --   (result,cor) <- return set_env >> testForwardPath2 spiral_path8
+    --   return (result == cor) `shouldReturn` True
 
-    it "compile 6-way spiral size 12 DirectMontyInMem" $ do
-      set_env <- setEnv "COMPILER" "DirectMontyInMem"
-      (result,cor) <- return set_env >> testForwardPath2 spiral_path12
-      return (result == cor) `shouldReturn` True    
+    -- it "compile 6-way spiral size 12 DirectMontyInMem" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMontyInMem"
+    --   (result,cor) <- return set_env >> testForwardPath2 spiral_path12
+    --   return (result == cor) `shouldReturn` True    
 
-    it "compile sample size 64 number 20 DirectMontyInMem" $ do
-      set_env <- setEnv "COMPILER" "DirectMontyInMem"
-      ((return set_env) >> (testSample (Base 64 64 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+    -- it "compile sample size 64 number 20 DirectMontyInMem" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMontyInMem"
+    --   ((return set_env) >> (testSample (Base 64 64 128 257) (mkStdGen 10) 20)) `shouldReturn` True
     
-    it "compile sample size 16 number 20 DirectMontyInMem" $ do
-      set_env <- setEnv "COMPILER" "DirectMontyInMem"
-      ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
+    -- it "compile sample size 16 number 20 DirectMontyInMem" $ do
+    --   set_env <- setEnv "COMPILER" "DirectMontyInMem"
+    --   ((return set_env) >> (testSample (Base 16 16 128 257) (mkStdGen 10) 20)) `shouldReturn` True
   
 
 testSample :: Ring -> StdGen -> Int -> IO Bool
@@ -143,7 +181,7 @@ testSample ring gen size =
     compare_func ((res,cor),p) =
       if res==cor then
         return True
-      else
+      else 
         logObj "Failed LO rep of path" p >> return False
 
 ---- compares to full size phi transformation
@@ -157,7 +195,7 @@ testSample ring gen size =
 --    result <- writeCode fname code >> extractResult fname
 --    permCor <- maybeToIO "Failed get permCor" (permCor path)
 --    return (result,permCor)
---
+
 -- directly compares to LO path
 testForwardPath2 :: Path -> IO ([Int],[Int])
 testForwardPath2 path =

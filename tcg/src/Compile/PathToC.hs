@@ -10,62 +10,103 @@ import Util.Util
 import Search.Search
 import Algebra.PolyRings
 import Compile.Monty
+import Compile.OptimizeIR
 
+
+type KernelOptFunc = [Kernel] -> [Kernel]
+type LOClassOptFunc = [LOClass] -> [LOClass]
+type KernelCompileFunc a = Int -> [LOClass] -> a -> PruneFAST a -> IO CProgram
 type PruneFAST a = a -> FieldAST a -> FieldAST a
-type KernelCompileFunc a = (Int -> [Kernel] -> a -> PruneFAST a -> IO CProgram)
 type BoilerPlateFunc = (CProgram -> Int -> Int -> Maybe String)
 
 
-compilePathToC :: Field a => a -> KernelCompileFunc a -> PruneFAST a -> BoilerPlateFunc -> Path -> IO String
-compilePathToC field compile_func prune_func boiler_plate_func (Path start morphs) =
-  let kers = path_get_steps (Path start morphs)
-      n = get_size start in
-      do -- IO
-        io_kers <- maybeToIO "Path2C: failed compileKernels" kers
-        program <- compile_func n io_kers field prune_func
-        code <- maybeToIO "Failed adding boiler plate" (boiler_plate_func program (get_size start) (get_prime start))
-        return code
+compilePathToC :: Field a =>
+  a ->
+  KernelOptFunc ->
+  LOClassOptFunc ->
+  KernelCompileFunc a ->
+  PruneFAST a ->
+  BoilerPlateFunc ->
+  Path ->
+  IO String
+compilePathToC field  kernel_opt lo_opt compile_func prune_func boiler_plate_func path =
+  let
+    start = path_get_start path
+    size = get_size start
+    prime = get_prime start
+  in
+    do -- IO
+      kers <- maybeToIO "Path2C: Failed path_get_steps" (path_get_steps path)
+      opt_kers <- return . kernel_opt $ kers
+      lops <- maybeToIO "Path2C: Failed kernelToLO" (sequence (fmap kernelToLO opt_kers))
+      opt_lops <- return (lo_opt lops)
+      program <- compile_func size opt_lops field prune_func
+      code <- maybeToIO "Failed adding boiler plate" (boiler_plate_func program size prime)
+      return code
 
+compilePathToC_noOpt :: Field a =>
+  a ->
+  KernelCompileFunc a ->
+  PruneFAST a ->
+  BoilerPlateFunc ->
+  Path ->
+  IO String
+compilePathToC_noOpt field =
+  let
+    kernel_opt = id --remove_identity_kernels
+    lo_opt = id --fmap expand_diagonal
+  in
+    compilePathToC field kernel_opt lo_opt
+
+compilePathToC_completeOpt :: Field a =>
+  a ->
+  KernelCompileFunc a ->
+  PruneFAST a ->
+  BoilerPlateFunc ->
+  Path ->
+  IO String
+compilePathToC_completeOpt field =
+  let
+    kernel_opt = remove_identity_kernels
+    lo_opt = fmap expand_diagonal
+  in
+    compilePathToC field kernel_opt lo_opt
+  
 --
 
 pruneFast :: Field a => PruneFAST a
 pruneFast field = removeNegation . (addNegation field) . removeOnes . removeZeros 
 
 compileKersToFieldAST_inMem :: Field a => KernelCompileFunc a 
-compileKersToFieldAST_inMem n kers field prune_func =
+compileKersToFieldAST_inMem n lops field prune_func =
   let
     inVars =  ["X["++show i++"]"|i<-[0..n-1]]
     outVars =  ["Y["++show i++"]"|i<-[0..n-1]]
   in
   do
-    lops <- maybeToIO "Path2C: Failed kernelToLO" (sequence (fmap kernelToLO kers))
-    filtered_lops <- return ( filter_lops n lops)
-    (newInVars,newOutVars,stmts) <- foldl foldKernelSeries_inMem (return (inVars,outVars,[])) filtered_lops
+    adjusted_lops <- return ( adjust_lops n lops)
+    (newInVars,newOutVars,stmts) <- foldl foldKernelSeries_inMem (return (inVars,outVars,[])) adjusted_lops
     fast <- return . (prune_func field) $ FieldAST stmts
     prog <- return (translateFieldToC field fast)
     return prog
   where
-    filter_lops :: Int -> [LOClass] -> [LOClass]
-    filter_lops n lops = let filtered = filter (not . isLOId) lops in
-      if mod (length filtered) 2 == 0 then
-        filtered++[LOId n]
+    adjust_lops :: Int -> [LOClass] -> [LOClass]
+    adjust_lops n lops = 
+      if mod (length lops) 2 == 0 then
+        lops++[LOId n]
       else
-        filtered
+        lops
     
 compileKersToFieldAST :: Field a => KernelCompileFunc a
-compileKersToFieldAST n kers field prune_func = 
+compileKersToFieldAST n lops field prune_func = 
   let inputVars = ["X["++show i++"]"|i<-[0..n-1]] in
   do -- IO
-    lops <- maybeToIO "Path2C: Failed kernelToLO" (sequence (fmap kernelToLO kers))
-    filtered_lops <- return (filter_lops lops)
-    (vc,outVars,stmts) <- foldl foldKernelSeries (return (0,inputVars,[])) filtered_lops
+    (vc,outVars,stmts) <- foldl foldKernelSeries (return (0,inputVars,[])) lops
     fast <- return . (prune_func field) $ FieldAST stmts
     prog <- return (translateFieldToC field fast)
     progComplete <- return (CProgram ((initVars vc)++(get_stmts prog)++(assignResult outVars)))
     return progComplete
   where
-    filter_lops :: [LOClass] -> [LOClass]
-    filter_lops lops = filter (not . isLOId) lops
     initVars :: Int -> [CStatement]
     initVars vc = [CVarDeclare CInt ("t"++show i) |i<-[0..vc-1]]
     assignResult :: [String] -> [CStatement]
@@ -89,6 +130,7 @@ gen_function [] body =
     concat_lines 2 body,
     "}",
     "" ]
+
 gen_function args body =
   [ "void gen(int* X,int* Y,"++showStrTuple args++"){",
     concat_lines 2 body,

@@ -25,7 +25,7 @@ instance Eq (Int -> Morphism) where
   (==) f1 f2 = (f1 0) == (f2 0)
 
 data Morphism =
-  Inverse Morphism |
+  --Inverse Morphism |
   Extend Int Morphism |
   Repeat Int Morphism |
   Factor Int |
@@ -37,6 +37,16 @@ data Morphism =
   IdR
   deriving (Show,Eq,Ord)
 
+
+is_leaf :: Morphism -> Bool
+is_leaf (Extend _ _) = False
+is_leaf (Repeat _ _) = False
+is_leaf _ = True
+
+split_parent_child :: Morphism -> Maybe (Morphism->Morphism,Morphism)
+split_parent_child (Extend n morph) = Just ((\x -> Extend n x),morph)
+split_parent_child (Repeat n morph) = Just ((\x -> Repeat n x),morph)
+split_parent_child _ = Nothing
 
 apply :: Morphism -> Ring -> Maybe Ring
 apply (Label k) x = (label k) x 
@@ -247,7 +257,7 @@ morphism_to_kernel SwapJoinProd _ = Nothing
 
 morphism_to_kernel (Repeat k0 m) (Quo n k1 d r) = if k0 == k1 then (morphism_to_kernel m r) >>= (\lo -> Just (Kernel_Repeat n k0 lo)) else Nothing
 morphism_to_kernel (Repeat k0 m) r = Nothing
-                            
+
 morphism_to_kernel (Extend k0 m) (Prod n k f) = Just (Kernel_Extend n k0 (\i -> (f i) >>= (\r -> morphism_to_kernel m r)))
 morphism_to_kernel (Extend k0 m) r = Nothing 
 

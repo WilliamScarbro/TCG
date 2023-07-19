@@ -105,7 +105,7 @@ swapQP _ = Nothing
 
 _prod_double_index :: (Int -> Maybe Ring) -> Int -> Int -> Maybe Ring
 _prod_double_index f i j =
-  do
+  do -- Maybe
     prod <- f i
     (_,_,f2) <- prod_get_data prod
     f2 j
@@ -123,8 +123,8 @@ joinProd (Prod n0 k0 f0) =
   do
     prod <- f0 0 :: Maybe Ring
     (n1,k1,_) <- prod_get_data prod
-    Just (Prod n0 (k0*k1) (\i -> _prod_double_index f0 (div i n1) (mod i n1)))
-      
+    Just (Prod n0 (k0*k1) (\i -> _prod_double_index f0 (div i k1) (mod i k1)))
+
 --pushin :: Ring -> Maybe Ring
 --pushin (Quo nq kq d0 (Prod np kp f)) = let nf = div np kp in
 --  let new_nq = nf*kq in

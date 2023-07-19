@@ -33,7 +33,7 @@ decomp_spec = do
     it "check decomp paths  " $ do -- IO
       path <- turtles (Base 16 0 16 17) (Factor 2)
       (newDL,paths) <- decompose_path 5 (lib_empty 5) path
-      _check_decomp_path path paths `shouldReturn` True
+      _check_decomp_paths path paths `shouldReturn` True
 
     it "chceck decomp lib factor4_decomp" $ do -- IO
       factor4_decomp <- lib_add_slice (Base 4 0 4 5,Prod 4 4 (\i -> Just (Base 1 i 4 5))) (lib_empty 10) :: IO DecompLib

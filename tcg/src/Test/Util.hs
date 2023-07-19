@@ -8,10 +8,19 @@ import Search.Search
 import Util.Util
 
 -- functions
+baseOrder :: Ring -> Maybe [Int]
+baseOrder (Prod n k f) =
+  do --Maybe
+    childs <- sequence [(f i) >>= baseOrder | i<-[0..k-1]]
+    return (foldr (++) [] childs)
+baseOrder (Quo n k d r) = baseOrder r
+baseOrder (Base n d b p) = Just [d]
+
 
 expandTerminal :: Ring -> Maybe [Int]
 expandTerminal (Prod n k f) = fmap (foldr (++) []) (traverse id [(f i) >>= expandTerminal | i<- [0..k-1]])
 expandTerminal (Base n d b p) = Just [d]
+expandTerminal _ = Nothing
 
 terminalToPerm :: Int -> Int -> Int -> [Int] -> [Int]
 terminalToPerm n d b term = fmap (\x -> (x-(d `div` n)) `div` (b `div` n)) term
@@ -22,7 +31,7 @@ correctResult (Base n d b p) = let vec = ffVec n p id in
     (mv phi_lop vec) >>= toIntList
 
 applyPerm :: [Int] -> [Int] -> [Int]
-applyPerm l perm = [l!!p | p <- perm]
+applyPerm l perm = [if p < length l then l!!p else -1 | p <- perm]
 
 testPerm :: Path -> Maybe ([Int],[Int])
 testPerm path =
@@ -74,3 +83,13 @@ spiral_path12_nw = Path (Base 12 12 24 73) [(Label 4), (Repeat 4 (Factor 3)), Sw
 spiral_path8 = Path (Base 8 0 8 17) [(Label 4), (Repeat 4 (Factor 2)), SwapQP, (Extend 2 (Define)), (Extend 2 (Norm)), (Extend 2 (Repeat 1 (Factor 4))), (Extend 2 SwapQP), (Extend 2 (Extend 4 Define))]
 
 true_spiral_path6 = Path (Base 6 0 6 7) [(Label 2), (Repeat 2 (Factor 3)), SwapQP, (Extend 3 (Define)), (Extend 3 (Norm)), (Extend 3 (Repeat 1 (Factor 2))), (Extend 3 SwapQP), (Extend 3 (Extend 2 Define)), SwapJoinProd]
+
+permuted_spiral_path6 = Path (Base 6 0 6 7) [(Label 2), (Repeat 2 (Factor 3)), SwapQP, (Extend 3 (Define)), (Extend 3 (Norm)), (Extend 3 (Repeat 1 (Factor 2))), (Extend 3 SwapQP), (Extend 3 (Extend 2 Define)), JoinProd]
+
+join_path1 = Path (Base 16 0 16 17) [Factor 2,Extend 2 (Factor 4), JoinProd, Extend 8 (Factor 2)]
+join_path2 = Path (Base 16 0 16 17) [Factor 2,Extend 2 (Factor 4), SwapJoinProd, Extend 8 (Factor 2)]
+join_path3 = Path (Base 16 0 16 17) [Factor 2,Extend 2 (Factor 4), Extend 2 (Extend 4 (Factor 2)), SwapJoinProd,JoinProd]
+join_path4 = Path (Base 16 0 16 17) [Factor 2,Extend 2 (Factor 4), Extend 2 (Extend 4 (Factor 2)), SwapJoinProd,SwapJoinProd]
+join_path5 = Path (Base 16 0 16 17) [Factor 2,Extend 2 (Factor 4), Extend 2 (Extend 4 (Factor 2)), JoinProd,SwapJoinProd]
+
+

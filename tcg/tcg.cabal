@@ -36,10 +36,13 @@ executable tcg
     Compile.FAST,
     Compile.Monty,
     Compile.LOClasses,
+    Compile.KernelToVectorOp,
+    Compile.OptimizeIR,
     Util.Util,
     Util.Logger,
     Util.KernelTimer,
     Test.PathToC_Test,
+    Test.Fourier_Test,
     Test.Util
   build-depends:
        base,

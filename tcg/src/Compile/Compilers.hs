@@ -22,17 +22,17 @@ compilePath path =
   do -- IO
     cname <- compiler_name
     monty <- maybeToIO "failed monty_init" (monty_init prime)
-    cfunc <- maybeToIO ("COMPILER value invalid "++cname) (lookup cname [("Direct",compilePathToC
+    cfunc <- maybeToIO ("COMPILER value invalid "++cname) (lookup cname [("Direct",compilePathToC_completeOpt
                                                                            (FField prime)
                                                                            compileKersToFieldAST
                                                                            pruneFast
                                                                            add_boiler_plate),
-                                                                         ("DirectMonty",compilePathToC
+                                                                         ("DirectMonty",compilePathToC_completeOpt
                                                                            monty
                                                                            compileKersToFieldAST
                                                                            pruneFast
                                                                            add_boiler_plate_monty),
-                                                                         ("DirectMontyInMem",compilePathToC
+                                                                         ("DirectMontyInMem",compilePathToC_completeOpt
                                                                            monty
                                                                            compileKersToFieldAST_inMem
                                                                            pruneFast
