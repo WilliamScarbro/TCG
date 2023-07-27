@@ -1,0 +1,161 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include "../Util.h"
+#include "../timer.h"
+#include "../Monty.h"
+
+void gen(int* X,int* Y,monty_str* monty){
+    int t0;
+    int t1;
+    int t2;
+    int t3;
+    int t4;
+    int t5;
+    int t6;
+    int t7;
+    int t8;
+    int t9;
+    int t10;
+    int t11;
+    int t12;
+    int t13;
+    int t14;
+    int t15;
+    int t16;
+    int t17;
+    int t18;
+    int t19;
+    int t20;
+    int t21;
+    int t22;
+    int t23;
+    int t24;
+    int t25;
+    int t26;
+    int t27;
+    int t28;
+    int t29;
+    int t30;
+    int t31;
+    int t32;
+    int t33;
+    int t34;
+    int t35;
+    int t36;
+    int t37;
+    int t38;
+    int t39;
+    int t40;
+    int t41;
+    int t42;
+    int t43;
+    int t44;
+    int t45;
+    int t46;
+    int t47;
+    t0 = (X[0] + (X[2] + (X[4] + (X[6] + (X[8] + (X[10] + (X[12] + X[14])))))));
+    t2 = (X[0] + (REDC(monty,(16 * X[2])) + (REDC(monty,(8 * X[4])) + (REDC(monty,(4 * X[6])) + ((REDC(monty,(1 * X[10])) + (REDC(monty,(9 * X[12])) + REDC(monty,(13 * X[14])))) - X[8])))));
+    t4 = (X[0] + (REDC(monty,(8 * X[2])) + ((REDC(monty,(9 * X[6])) + (X[8] + (REDC(monty,(8 * X[10])) + (REDC(monty,(9 * X[14])) - X[12])))) - X[4])));
+    t6 = (X[0] + (REDC(monty,(4 * X[2])) + (REDC(monty,(9 * X[4])) + (REDC(monty,(16 * X[6])) + ((REDC(monty,(13 * X[10])) + (REDC(monty,(8 * X[12])) + REDC(monty,(1 * X[14])))) - X[8])))));
+    t8 = (X[0] + ((X[4] + ((X[8] + ((X[12] - X[14]) - X[10])) - X[6])) - X[2]));
+    t10 = (X[0] + (REDC(monty,(1 * X[2])) + (REDC(monty,(8 * X[4])) + (REDC(monty,(13 * X[6])) + ((REDC(monty,(16 * X[10])) + (REDC(monty,(9 * X[12])) + REDC(monty,(4 * X[14])))) - X[8])))));
+    t12 = (X[0] + (REDC(monty,(9 * X[2])) + ((REDC(monty,(8 * X[6])) + (X[8] + (REDC(monty,(9 * X[10])) + (REDC(monty,(8 * X[14])) - X[12])))) - X[4])));
+    t14 = (X[0] + (REDC(monty,(13 * X[2])) + (REDC(monty,(9 * X[4])) + (REDC(monty,(1 * X[6])) + ((REDC(monty,(4 * X[10])) + (REDC(monty,(8 * X[12])) + REDC(monty,(16 * X[14])))) - X[8])))));
+    t1 = (X[1] + (X[3] + (X[5] + (X[7] + (X[9] + (X[11] + (X[13] + X[15])))))));
+    t3 = (X[1] + (REDC(monty,(16 * X[3])) + (REDC(monty,(8 * X[5])) + (REDC(monty,(4 * X[7])) + ((REDC(monty,(1 * X[11])) + (REDC(monty,(9 * X[13])) + REDC(monty,(13 * X[15])))) - X[9])))));
+    t5 = (X[1] + (REDC(monty,(8 * X[3])) + ((REDC(monty,(9 * X[7])) + (X[9] + (REDC(monty,(8 * X[11])) + (REDC(monty,(9 * X[15])) - X[13])))) - X[5])));
+    t7 = (X[1] + (REDC(monty,(4 * X[3])) + (REDC(monty,(9 * X[5])) + (REDC(monty,(16 * X[7])) + ((REDC(monty,(13 * X[11])) + (REDC(monty,(8 * X[13])) + REDC(monty,(1 * X[15])))) - X[9])))));
+    t9 = (X[1] + ((X[5] + ((X[9] + ((X[13] - X[15]) - X[11])) - X[7])) - X[3]));
+    t11 = (X[1] + (REDC(monty,(1 * X[3])) + (REDC(monty,(8 * X[5])) + (REDC(monty,(13 * X[7])) + ((REDC(monty,(16 * X[11])) + (REDC(monty,(9 * X[13])) + REDC(monty,(4 * X[15])))) - X[9])))));
+    t13 = (X[1] + (REDC(monty,(9 * X[3])) + ((REDC(monty,(8 * X[7])) + (X[9] + (REDC(monty,(9 * X[11])) + (REDC(monty,(8 * X[15])) - X[13])))) - X[5])));
+    t15 = (X[1] + (REDC(monty,(13 * X[3])) + (REDC(monty,(9 * X[5])) + (REDC(monty,(1 * X[7])) + ((REDC(monty,(4 * X[11])) + (REDC(monty,(8 * X[13])) + REDC(monty,(16 * X[15])))) - X[9])))));
+    t16 = (t0 + t1);
+    t17 = (t0 - t1);
+    t18 = (t2 + REDC(monty,(11 * t3)));
+    t19 = (t2 + REDC(monty,(6 * t3)));
+    t20 = (t4 + REDC(monty,(16 * t5)));
+    t21 = (t4 + REDC(monty,(1 * t5)));
+    t22 = (t6 + REDC(monty,(14 * t7)));
+    t23 = (t6 + REDC(monty,(3 * t7)));
+    t24 = (t8 + REDC(monty,(8 * t9)));
+    t25 = (t8 + REDC(monty,(9 * t9)));
+    t26 = (t10 + REDC(monty,(7 * t11)));
+    t27 = (t10 + REDC(monty,(10 * t11)));
+    t28 = (t12 + REDC(monty,(4 * t13)));
+    t29 = (t12 + REDC(monty,(13 * t13)));
+    t30 = (t14 + REDC(monty,(12 * t15)));
+    t31 = (t14 + REDC(monty,(5 * t15)));
+    t32 = t16;
+    t33 = t17;
+    t34 = t18;
+    t35 = t19;
+    t36 = t20;
+    t37 = t21;
+    t38 = t22;
+    t39 = t23;
+    t40 = t24;
+    t41 = t25;
+    t42 = t26;
+    t43 = t27;
+    t44 = t28;
+    t45 = t29;
+    t46 = t30;
+    t47 = t31;
+    Y[0] = t32;
+    Y[1] = t33;
+    Y[2] = t34;
+    Y[3] = t35;
+    Y[4] = t36;
+    Y[5] = t37;
+    Y[6] = t38;
+    Y[7] = t39;
+    Y[8] = t40;
+    Y[9] = t41;
+    Y[10] = t42;
+    Y[11] = t43;
+    Y[12] = t44;
+    Y[13] = t45;
+    Y[14] = t46;
+    Y[15] = t47;
+
+}
+
+int main(int argc,char** argv){
+    int* X = malloc(sizeof(int)*16);
+    int* Y = malloc(sizeof(int)*16);
+    
+    for(int i=0; i<16; i++){
+      X[i]=i;
+    }
+    
+    monty_str monty;
+    monty_init(&monty,17,32,15,8,5);
+    for(int i=0; i<16; i++){
+      toResidue(&monty,X[i]);
+    }
+    
+    initialize_timer();
+    start_timer();
+    
+    gen(X,Y,&monty);
+    
+    stop_timer();
+    printf("Elapsed time: %f\n",elapsed_time());
+    
+    for(int i=0; i<16; i++){
+      fromResidue(&monty,Y[i]);
+    }
+    
+    for(int i=0; i<16; i++){
+      Y[i]=(((Y[i]+17)%17)+17)%17;
+    }
+    
+    print_array("result",Y,16);
+    
+    free(X);
+    free(Y);
+    
+
+}
+
+// op count: fromList [(CBinary CAdd,103),(CBinary CSubtract,25),(CBinary CMultiply,78)]

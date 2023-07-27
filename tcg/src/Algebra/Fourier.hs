@@ -25,7 +25,7 @@ instance Eq (Int -> Morphism) where
   (==) f1 f2 = (f1 0) == (f2 0)
 
 data Morphism =
-  --Inverse Morphism |
+  MInverse Morphism |
   Extend Int Morphism |
   Repeat Int Morphism |
   Factor Int |
@@ -63,6 +63,7 @@ apply (Extend k0 m) (Prod n k f) | k0==k = Just (Prod n k (\i -> f i >>= (\g -> 
 apply (Repeat i m) (Quo n j k x) | i==j = (apply m x) >>= (\y -> Just (Quo n j k y))
                                  | otherwise = Nothing
 apply IdR x = Just x
+apply (MInverse m) _ = Nothing -- cannot apply Inverse Morphism
 
 ---
 
@@ -173,21 +174,35 @@ matchId r = return [IdR]
 define_morphism :: Morphism -> Ring -> Maybe (LinearOp FF)
 
 define_morphism (Factor k) (Base n d b p) = Just (phi n k d b p)
-define_morphism (Factor k) r = Nothing
+define_morphism (Factor k) _ = Nothing
+define_morphism (MInverse (Factor k)) (Base n d b p) = Just (phi_inv n k d b p)
+define_morphism (MInverse (Factor k)) _ = Nothing
 
 define_morphism (Label k) (Base n d b p) = Just (mL n k)
 define_morphism (Label k) r = Nothing
+define_morphism (MInverse (Label k)) (Base n d b p) = Just (mL n (div n k))
+define_morphism (MInverse (Label k)) _ = Nothing
 
 define_morphism Norm (Base n d b p) = Just (gamma n 1 d b p)
 define_morphism Norm r = Nothing
+define_morphism (MInverse Norm) (Base n d b p) = Just (gamma_inv n 1 d b p)
+define_morphism (MInverse Norm) _ = Nothing
 
 define_morphism Define (Quo n k d0 (Base 1 d b p)) = Just (mId n)
 define_morphism Define r = Nothing
+define_morphism (MInverse Define) (Quo n k d0 (Base 1 d b p)) = Just (mId n)
+define_morphism (MInverse Define) r = Nothing
 
 define_morphism SwapQQ (Quo n0 k 0 (Quo n1 1 d r)) = Just (gamma k n1 d (get_root r) (get_prime r))
 define_morphism SwapQQ _ = Nothing
+define_morphism (MInverse SwapQQ) (Quo n0 k 0 (Quo n1 1 d r)) = Just (gamma_inv k n1 d (get_root r) (get_prime r))
+define_morphism (MInverse SwapQQ) _ = Nothing
 
 define_morphism SwapQP (Quo n0 k0 d0 (Prod n1 k1 f)) = Just (mT k0 k1 (div n1 k1))
+define_morphism SwapQP _ = Nothing
+define_morphism (MInverse SwapQP) (Quo n0 k0 d0 (Prod n1 k1 f)) = Just (mT k1 k0 (div n1 k1))
+define_morphism (MInverse SwapQP) _ = Nothing
+
 --define_morphism SwapPQ (Prod n0 k0 f) =
 --  do
 --    (n1,k1) <- get_quo_vals (f 0)
@@ -202,18 +217,31 @@ define_morphism SwapJoinProd (Prod n0 k0 f0) =
     (n1,k1,f1) <- prod_get_data prod
     return (mT k0 k1 (div n1 k1))
 define_morphism SwapJoinProd _ = Nothing
+define_morphism (MInverse SwapJoinProd) (Prod n0 k0 f0) =
+  do
+    prod <- f0 0
+    (n1,k1,f1) <- prod_get_data prod
+    return (mT k1 k0 (div n1 k1))
+define_morphism (MInverse SwapJoinProd) _ = Nothing
 
 define_morphism JoinProd (Prod n _ _) = Just (mId n)
 define_morphism JoinProd _ = Nothing
+define_morphism (MInverse JoinProd) (Prod n _ _) = Just (mId n)
+define_morphism (MInverse JoinProd) _ = Nothing
 
 define_morphism (Repeat k0 m) (Quo n k1 d r) = if k0 == k1 then (define_morphism m r) >>= (\lo -> (repeatLO k0 lo)) else Nothing
 define_morphism (Repeat k0 m) r = Nothing
+define_morphism (MInverse (Repeat k0 m)) (Quo n k1 d r) = if k0 == k1 then (define_morphism (MInverse m) r) >>= (\lo -> (repeatLO k0 lo)) else Nothing
+define_morphism (MInverse (Repeat k0 m)) r = Nothing
 
 define_morphism (Extend k0 m) (Prod n k1 f) = if k0 == k1 then extendLO (div n k1) k1 (\i -> (f i) >>= (\r -> define_morphism m r)) else Nothing
 define_morphism (Extend k0 m) r = Nothing
+define_morphism (MInverse (Extend k0 m)) (Prod n k1 f) = if k0 == k1 then extendLO (div n k1) k1 (\i -> (f i) >>= (\r -> define_morphism (MInverse m) r)) else Nothing
+define_morphism (MInverse (Extend k0 m)) r = Nothing
 
 
 --
+
 
 morphism_to_kernel :: Morphism -> Ring -> Maybe Kernel
 
@@ -260,6 +288,9 @@ morphism_to_kernel (Repeat k0 m) r = Nothing
 
 morphism_to_kernel (Extend k0 m) (Prod n k f) = Just (Kernel_Extend n k0 (\i -> (f i) >>= (\r -> morphism_to_kernel m r)))
 morphism_to_kernel (Extend k0 m) r = Nothing 
+
+
+morphism_to_kernel (MInverse m) ring = (morphism_to_kernel m ring) >>= (\k -> return (KInverse k))
 
 --
                             

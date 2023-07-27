@@ -6,6 +6,9 @@ import Algebra.Fourier
 import Algebra.PolyRings
 import Search.Search
 import Util.Util
+import Util.Logger
+
+import System.Random
 
 -- functions
 baseOrder :: Ring -> Maybe [Int]
@@ -65,7 +68,24 @@ permCor path =
     perm <- return (terminalToPerm size d b term)
     permCorList <- return (applyPerm cor perm)
     return permCorList
-     
+
+testSample :: (Path -> IO (([Int],[Int]),Path)) -> Ring -> StdGen -> Int  -> IO Bool
+testSample test_func ring gen size =
+  do -- IO
+    paths <- randomSample ring gen size :: IO [Path]
+    tested <- sequence (fmap test_func paths) :: IO [(([Int],[Int]),Path)]
+    compared <- sequence (fmap compare_func tested) :: IO [Bool]
+    compare <- return . all id $ compared :: IO Bool
+    return compare
+  where
+    compare_func :: (Eq a,Show b,Show a) => ((a,a),b) -> IO Bool
+    compare_func ((res,cor),p) =
+      if res==cor then
+        return True
+      else
+        logObj "Failed LO rep of path" (p,res,cor) >> return False
+
+
 -- data
 
 factor_path4 = Path (Base 4 0 4 5) [(Factor 2),(Extend 2 (Factor 2))]

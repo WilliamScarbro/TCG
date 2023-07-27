@@ -92,7 +92,8 @@ res_cmp :: (Integer -> Integer -> Bool) -> (ResInt -> ResInt -> Bool)
 res_cmp op (Res i p) (Res j q) | (p /= q) && (p /= 0) && (q /= 0) = False
                                | (p == 0) && (q /= 0) = res_cmp op (Res i q) (Res j q)
                                | (p /= 0) && (q == 0) = res_cmp op (Res i p) (Res j p)
-                               | (p == q) = (op (mod i p) (mod j p))
+                               | (p == q) && (p /= 0) = (op (mod i p) (mod j p))
+                               | (p == q) && (p == 0) = op i j
 
 is_prime :: (Integral a) => a -> Bool
 is_prime x = length (divisors x) == 2

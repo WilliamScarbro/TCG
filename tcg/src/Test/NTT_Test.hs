@@ -24,12 +24,26 @@ ntt_spec = do
       let test_phi1_1 = (mL 6 2) * (phi 6 3 6 12 13) * (mL 6 3)
           test_phi1_2 = tensor (mId 2) (phi 3 3 6 12 13) in
       test_phi1_1 `shouldBe` test_phi1_2 
-    it "phi by phi_inv produces identity" $
+    it "phi by phi_inv produces identity, case 1" $
       let test_phi2_1 = (phi 6 3 6 12 13)
           test_phi2_2 = (phi_inv 6 3 6 12 13)
-          test_phi2_3 = test_phi2_1 * (tpose test_phi2_2) in
+          test_phi2_3 = test_phi2_1 * (test_phi2_2) in
       -- for some reason we have to transpose to get an inverse, this sort of matches the gxg^-1 group action
       test_phi2_3 `shouldBe` (mId 6)
+    it "phi by phi_inv produces identity, case 2" $
+      let test_phi2_1 = (phi 16 4 16 32 257)
+          test_phi2_2 = (phi_inv 16 4 16 32 257)
+          test_phi2_3 = test_phi2_1 * (test_phi2_2) 
+      in
+        -- for some reason we have to transpose to get an inverse, this sort of matches the gxg^-1 group action
+        test_phi2_3 `shouldBe` (mId 16)
+    it "phi by phi_inv produces identity, case 3" $
+      let test_phi2_1 = (phi 4 4 4 8 17)
+          test_phi2_2 = (phi_inv 4 4 4 8 17)
+          test_phi2_3 = test_phi2_1 * (test_phi2_2)
+      in
+        -- for some reason we have to transpose to get an inverse, this sort of matches the gxg^-1 group action
+        test_phi2_3 `shouldBe` (mId 4)
 
     it "gamma by gamma inv produces identity" $
       let test_gamma1 = gamma 3 1 3 6 7

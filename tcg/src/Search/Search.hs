@@ -20,12 +20,31 @@ data Path = Path Ring [Morphism] deriving (Show,Eq,Ord)
 path_get_start :: Path -> Ring
 path_get_start (Path start morphs) = start
 
-path_get_steps :: Path -> Maybe [Kernel] 
-path_get_steps (Path r (m:morphs)) = let new_r = apply m r in
-  let m_new_steps = (new_r >>= (\m_r -> path_get_steps (Path m_r morphs))) in
-    let m_ker_list = traverse id ([morphism_to_kernel m r]) in
-      m_ker_list >>= (\ker_list -> pure (ker_list ++) <*> m_new_steps)
-path_get_steps (Path start []) = Just []
+-- path_get_steps :: Path -> Maybe [Kernel] 
+-- path_get_steps (Path r (m:morphs)) = let new_r = apply m r in
+--   let m_new_steps = (new_r >>= (\m_r -> path_get_steps (Path m_r morphs))) in
+--     let m_ker_list = traverse id ([morphism_to_kernel m r]) in
+--       m_ker_list >>= (\ker_list -> pure (ker_list ++) <*> m_new_steps)
+-- path_get_steps (Path start []) = Just []
+
+path_get_steps :: Path -> Maybe [Kernel]
+path_get_steps (Path ring []) = return []
+path_get_steps (Path ring (m:morphs)) =
+  do --Maybe
+    new_ring <- apply m ring
+    new_steps <- path_get_steps (Path new_ring morphs)
+    new_kernel <- morphism_to_kernel m ring
+    return ([new_kernel]++new_steps)
+
+path_get_inverse_steps :: Path -> Maybe [Kernel]
+path_get_inverse_steps (Path ring []) = return []
+path_get_inverse_steps (Path ring (m:morphs)) =
+  do --Maybe
+    new_ring <- apply m ring
+    new_steps <- path_get_inverse_steps (Path new_ring morphs)
+    new_kernel <- morphism_to_kernel (MInverse m) ring
+    return ([new_kernel]++new_steps)
+
 
 path_get_morphs :: Path -> [Morphism]
 path_get_morphs (Path r morphs) = morphs
@@ -51,7 +70,10 @@ path_map func (Path start morphs) = rec_map func start morphs
     
 path_define :: Path -> Maybe [LinearOp FF]
 path_define path = path_map define_morphism path
-  
+
+path_define_inverse :: Path -> Maybe [LinearOp FF]
+path_define_inverse path = fmap reverse (path_map (\m -> define_morphism (MInverse m)) path)
+
 buildPath :: Ring -> (Ring -> IO (Maybe Morphism)) -> IO Path
 buildPath start f = buildPath_help start f start []
 buildPath_help :: Ring -> (Ring -> IO (Maybe Morphism)) -> Ring -> [Morphism] -> IO Path

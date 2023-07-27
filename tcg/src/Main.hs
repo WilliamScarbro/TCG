@@ -17,7 +17,7 @@ import  Compile.CAST
 import  Compile.FAST
 import  Compile.Monty
 import  Compile.LOClasses
-import  Compile.KernelToVectorOp
+import  Compile.KernelToVectorFAST
 import  Compile.OptimizeIR
 import  Util.Util
 import  Util.Logger

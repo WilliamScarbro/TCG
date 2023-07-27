@@ -169,3 +169,17 @@ fast_spec = do
                                 FieldAssignment "t6" (FieldOpExpr (FAdd (Variable "t1") (FieldOpExpr (FMultiply (Constant 2) (Variable "t3"))))),
                                 FieldAssignment "t7" (FieldOpExpr (FAdd (Variable "t1") (FieldOpExpr (FMultiply (Constant 3) (Variable "t3")))))]
     addNegation field fast `shouldBe` expectedAST
+
+  -- it "real example for remove ones" $ do
+  --   let field = FFiled 5
+  --       fast = FieldAST [FieldAssignment "y[0]" (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 1) (Variable "x[0]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 1) (Variable "x[1]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 1) (Variable "x[2]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 1) (Variable "x[3]"))) (Constant 0))))))))),
+  --                        FieldAssignment "y[1]" (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 1) (Variable "x[0]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 2) (Variable "x[1]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 4) (Variable "x[2]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 3) (Variable "x[3]"))) (Constant 0))))))))),
+  --                        FieldAssignment "y[2]" (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 1) (Variable "x[0]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 4) (Variable "x[1]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 1) (Variable "x[2]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 4) (Variable "x[3]"))) (Constant 0))))))))),
+  --                        FieldAssignment "y[3]" (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 1) (Variable "x[0]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 3) (Variable "x[1]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 4) (Variable "x[2]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 2) (Variable "x[3]"))) (Constant 0)))))))))]
+  --       expected = FieldAST [FieldAssignment "y[0]" (FieldOpExpr (FAdd (Variable "x[0]") (FieldOpExpr (FAdd (Variable "x[1]") (FieldOpExpr (FAdd (Variable "x[2]") (FieldOpExpr (FAdd (Variable "x[3]") (Constant 0))))))))),
+
+  --                            FieldAssignment "y[1]" (FieldOpExpr (FAdd (Variable "x[0]") (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 2) (Variable "x[1]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 4) (Variable "x[2]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 3) (Variable "x[3]"))) (Constant 0))))))))),
+
+  --                            FieldAssignment "y[2]" (FieldOpExpr (FAdd (Variable "x[0]") (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 4) (Variable "x[1]"))) (FieldOpExpr (FAdd (Variable "x[2]") (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 4) (Variable "x[3]"))) (Constant 0))))))))),
+
+  --                            FieldAssignment "y[3]" (FieldOpExpr (FAdd (Variable "x[0]") (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 3) (Variable "x[1]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 4) (Variable "x[2]"))) (FieldOpExpr (FAdd (FieldOpExpr (FMultiply (Constant 2) (Variable "x[3]"))) (Constant 0)))))))))]

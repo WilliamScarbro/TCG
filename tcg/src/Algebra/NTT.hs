@@ -33,6 +33,9 @@ linearOp n f = LO (matrix (fromIntegral n) (fromIntegral n) (\(x,y) -> f ((x-1),
 get_el :: Int -> Int -> LinearOp a -> a
 get_el x y (LO m) = getElem (x+1) (y+1) m
 
+get_vec_el :: Int -> Int -> Vector a -> a
+get_vec_el x y (Vec m) = getElem (x+1) (y+1) m
+
 size :: LinearOp a -> Int
 size (LO m) = nrows m
 
@@ -89,6 +92,15 @@ vv :: Vector FF -> Vector FF -> Maybe (Vector FF)
 vv (Vec v) (Vec v2) | ncols v /= nrows v2 = Nothing
                     | otherwise = Just (Vec (v*v2))
 
+point_mult :: Vector FF -> Vector FF -> Maybe (Vector FF)
+point_mult (Vec v1) (Vec v2) | nrows v1 /= nrows v2 = Nothing
+                             | ncols v1 /= ncols v2 = Nothing
+                             | nrows v1 /= 1 =
+                               return (Vec (matrix (nrows v1) 1 (\(i,j) -> (getElem i 1 v1)*(getElem i 1 v2))))
+                             | ncols v1 /= 1 =
+                               return (Vec (matrix 1 (ncols v1) (\(i,j) -> (getElem 1 j v1)*(getElem 1 j v2))))
+                                   
+                                               
 tensor :: LinearOp FF -> LinearOp FF -> LinearOp FF
 tensor l1 l2 = let n1=size l1 in let n2=size l2 in
   linearOp (n1 * n2) (\(x,y) ->  (get_el (div x n2) (div y n2) l1) * (get_el (mod x n2) (mod y n2) l2))
@@ -151,14 +163,35 @@ phi :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
 phi n k d b p = let call=(\(i,j) -> phi_func n k d b p i j) in
   linearOp n call
 
+phi_inv_func :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> FF
+phi_inv_func n k d b p =
+  let
+    rd = mod d b
+    m = div n k
+    k_inv = inv (Res (toInteger k) (toInteger p))
+  in
+    (\x y ->
+      do -- Maybe
+        w <- nth_root b p :: Maybe ResInt
+        w_inv <- inv w
+        if mod x m == mod y m then
+          --k_inv * (pow w_inv (div ((rd+(div x m)*b)*(div y m)) k))
+          k_inv * (pow w_inv (div ((rd+(div y m)*b)*(div x m)) k))
+        else
+          0 )
+
 phi_inv :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
 phi_inv n k d b p =
-  let rd = mod d b in
-    let w_inv=(nth_root b p) >>= inv in
-      let k_inv=inv (Res (toInteger k) (toInteger p)) in
-        let m=div n k in
-          --linearOp n (\(x,y) -> if mod x m == mod y m then Just (Res (toInteger (div ((rd+(div x m)*b)*(div y m)) k)) (toInteger p)) else 0)
-          linearOp n (\(x,y) -> if mod x m == mod y m then k_inv * (w_inv >>= (\z -> pow z (div ((rd+(div x m)*b)*(div y m)) k))) else 0)
+  linearOp n (\(i,j) -> (phi_inv_func n k d b p i j)) -- reverses inputs (transposes) should fix to remove this
+
+-- phi_inv :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
+-- phi_inv n k d b p =
+--   let rd = mod d b in
+--     let w_inv=(nth_root b p) >>= inv in
+--       let k_inv=inv (Res (toInteger k) (toInteger p)) in
+--         let m=div n k in
+--           --linearOp n (\(x,y) -> if mod x m == mod y m then Just (Res (toInteger (div ((rd+(div x m)*b)*(div y m)) k)) (toInteger p)) else 0)
+--           linearOp n (\(x,y) -> if mod x m == mod y m then k_inv * (w_inv >>= (\z -> pow z (div ((rd+(div x m)*b)*(div y m)) k))) else 0)
 
 -- gamma
 -- extended by m to implement swapQQ
@@ -175,7 +208,7 @@ gamma k m d b p =
 gamma_inv_func :: Int -> Int -> Int -> Int -> Int -> Int -> FF
 gamma_inv_func k m d b p x = do
   omega <- nth_root b p
-  pow omega (b-(div d k)*x)
+  pow omega (b-(div d k)*(div x m))
   
 gamma_inv :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
 gamma_inv k m d b p =
@@ -209,7 +242,8 @@ instance Ord (Int -> Maybe Kernel) where
   f1 <= f2 = (f1 0) <= (f2 0)
 
 data Kernel
-  = Phi Int Int Int Int Int -- n k d b p
+  = KInverse Kernel
+  | Phi Int Int Int Int Int -- n k d b p
   | Gamma Int Int Int Int Int -- k m d b p
   | KL Int Int -- n k
   | KT Int Int Int -- di dj dk
@@ -219,6 +253,7 @@ data Kernel
 
 
 sizeof :: Kernel -> Int
+sizeof (KInverse k) = sizeof k
 sizeof (Phi n _ _ _ _) = n
 sizeof (Gamma k m _ _ _) = k*m
 sizeof (KT di dj dk) = di * dj * dk
@@ -227,6 +262,7 @@ sizeof (KId n) = n
 sizeof (Kernel_Extend n _ f) = n*(squashMaybeInt (f 0) sizeof)
 sizeof (Kernel_Repeat n _ k) = n*(sizeof k)
 
+-- there are other kernels which reduce to identity, but we ignore that here
 isIdKer (KId _) = True
 isIdKer _ = False
 
