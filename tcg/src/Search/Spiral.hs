@@ -102,11 +102,11 @@ two_step_decomp n =
 
 two_step_mrw n = gen_rewritelib n two_step_decomp
 
-spiral_hillclimber :: MorphismReWriter a => a -> Path -> IO (a,[Path])
-spiral_hillclimber mrw path = do
+spiral_expand_func :: MorphismReWriter a => a -> Path -> IO (a,[Path])
+spiral_expand_func mrw path = do
   paths <- spiral_expand mrw path
   return (mrw,paths)
 
 
-spiral_search :: MorphismReWriter a => PathTimingSearchFunc a -> a -> Path -> IO Path
-spiral_search search_func mrw path = search_func spiral_hillclimber mrw path
+spiral_search :: MorphismReWriter a => SearchFunc a -> Int -> a -> Path -> IO [Path]
+spiral_search search_func depth mrw path = search_func depth spiral_expand_func mrw path

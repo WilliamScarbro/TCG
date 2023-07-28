@@ -10,6 +10,7 @@ import System.Random
 import Control.Monad
 import Data.Maybe
 
+import Search.HillClimbing
 import Search.Search
 import Algebra.FField
 import Algebra.PolyRings
@@ -190,5 +191,15 @@ decomp_search search_depth slice_len iterations path =
         foldr (\(path,time) (best_path,best_time) -> if time < best_time then (path,time) else (best_path,best_time) ) (head as_list) (tail as_list)
 
 
+--decompose_path :: Int -> DecompLib -> Path -> IO (DecompLib,[Path])
 
---spiral_search :: Int -> Int -> Int -> Path -> IO Path
+decompose_expand_func :: ExpandFunc (Int,DecompLib)
+  -- (Int,DecompLib) -> Path -> IO ((Int,DecompLib),[Path])
+decompose_expand_func (slice_len,decompLib) path =
+  do
+    (dl,paths) <- decompose_path slice_len decompLib path
+    return ((slice_len,dl),paths)
+
+-- an alternate version of decomp_search, built on search library functions
+decompose_search :: SearchFunc (Int,DecompLib) -> Int -> (Int,DecompLib) -> Path -> IO [Path]
+decompose_search search_func depth sl_dl path = search_func depth decompose_expand_func sl_dl path

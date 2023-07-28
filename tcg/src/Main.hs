@@ -75,23 +75,23 @@ main :: IO ()
 --main = passEnvVars >> testPathPop new_hope_params 1000
 --main = passEnvVars >> factorRun new_hope_logn
 --main = passEnvVars >> (\x -> geneticRun new_hope_params x 0 >> geneticRun new_hope_params x 10 >> geneticRun kyber_params x 0 >> geneticRun kyber_params x 10 ) 20
--- main = do
---   passEnvVars
---   path <- turtles (Base 64 0 64 7681) (Factor 2)
---   best_path <- decomp_search 5 5 10 path
---   putStr ( (show best_path)++"\n")
-
 main = do
   passEnvVars
-  gen_paths <- sequence [randomPath (Base 16 0 16 7681) (mkStdGen i) |i<-[1000..1005]] :: IO [(Path,StdGen)]
-  paths <- return (fmap fst gen_paths) :: IO [Path]
-  opt_paths <- return (fmap (\p -> (replace_swapjoinprod p,p)) paths) :: IO [(Path,Path)]
-  timed_paths <- sequence (fmap (\(p1,p2) -> do
-                                    t1 <- timePath p1 "OptGen"
-                                    t2 <- timePath p2 "Gen"
-                                    return (t1,t2)
-                                ) opt_paths) :: IO [(Float,Float)] 
-  putStr ("removed swap join, original "++show timed_paths++"\n")
+  path <- turtles (Base 64 0 64 7681) (Factor 2)
+  best_path <- decomp_search 5 5 10 path
+  putStr ( (show best_path)++"\n")
+
+-- main = do
+--   passEnvVars
+--   gen_paths <- sequence [randomPath (Base 16 0 16 7681) (mkStdGen i) |i<-[1000..1005]] :: IO [(Path,StdGen)]
+--   paths <- return (fmap fst gen_paths) :: IO [Path]
+--   opt_paths <- return (fmap (\p -> (replace_swapjoinprod p,p)) paths) :: IO [(Path,Path)]
+--   timed_paths <- sequence (fmap (\(p1,p2) -> do
+--                                     t1 <- timePath p1 "OptGen"
+--                                     t2 <- timePath p2 "Gen"
+--                                     return (t1,t2)
+--                                 ) opt_paths) :: IO [(Float,Float)] 
+--   putStr ("removed swap join, original "++show timed_paths++"\n")
   
  --main = putStrLn (drawForest (fmap (fmap show) (buildPathForest (Base 4 0 4 5))))
  --main = putStrLn $ drawTree $ fmap $ (fmap show) $ buildTree $ (Base 4 0 4 5)

@@ -163,6 +163,8 @@ phi :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
 phi n k d b p = let call=(\(i,j) -> phi_func n k d b p i j) in
   linearOp n call
 
+-- the position of x and y are reversed in comparison with the forward transform
+-- this is because in the equational representation the summation is over the z rather than the i variable
 phi_inv_func :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> FF
 phi_inv_func n k d b p =
   let
@@ -182,16 +184,8 @@ phi_inv_func n k d b p =
 
 phi_inv :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
 phi_inv n k d b p =
-  linearOp n (\(i,j) -> (phi_inv_func n k d b p i j)) -- reverses inputs (transposes) should fix to remove this
+  linearOp n (\(i,j) -> (phi_inv_func n k d b p i j)) 
 
--- phi_inv :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
--- phi_inv n k d b p =
---   let rd = mod d b in
---     let w_inv=(nth_root b p) >>= inv in
---       let k_inv=inv (Res (toInteger k) (toInteger p)) in
---         let m=div n k in
---           --linearOp n (\(x,y) -> if mod x m == mod y m then Just (Res (toInteger (div ((rd+(div x m)*b)*(div y m)) k)) (toInteger p)) else 0)
---           linearOp n (\(x,y) -> if mod x m == mod y m then k_inv * (w_inv >>= (\z -> pow z (div ((rd+(div x m)*b)*(div y m)) k))) else 0)
 
 -- gamma
 -- extended by m to implement swapQQ
