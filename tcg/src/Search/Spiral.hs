@@ -15,6 +15,7 @@ import Algebra.NTT
 import Algebra.Fourier
 import Util.Logger
 import Util.Util
+import Compile.Compilers
 
 type ReWriteLib a = Map.Map a [[a]]
 
@@ -109,4 +110,4 @@ spiral_expand_func mrw path = do
 
 
 spiral_search :: MorphismReWriter a => SearchFunc a -> Int -> a -> Path -> IO [(Path,Float)]
-spiral_search search_func depth mrw path = search_func depth spiral_expand_func mrw path
+spiral_search search_func depth mrw path = search_func depth spiral_expand_func (\p -> timePath p "Gen") mrw path

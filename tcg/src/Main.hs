@@ -72,16 +72,23 @@ factorRun (logn,p) = do { -- IO
   fp <- (timeFactorPaths logn p); -- [(Int,Int,Float)]
   putStrLn ( show fp )  }
 
-main :: IO ()
---main = passEnvVars >> testPathPop new_hope_params 1000
---main = passEnvVars >> factorRun new_hope_logn
---main = passEnvVars >> (\x -> geneticRun new_hope_params x 0 >> geneticRun new_hope_params x 10 >> geneticRun kyber_params x 0 >> geneticRun kyber_params x 10 ) 20
-main = do
-  passEnvVars
-  path <- turtles (Base 32 0 32 7681) (Factor 2)
-  path_times <- decompose_search hill_climbing_search 10 (5,lib_empty 5) path
-  only_times <- return (fmap snd path_times)
-  putStr ( show only_times ++ "\n" )
+decompose_test :: Int -> IO () 
+decompose_test n = 
+  do  
+    passEnvVars 
+    path <- return (Path (Base n 0 n 7681) [Factor n])  
+    path_times <- decompose_search hill_climbing_search 10 (5,lib_empty 5) path 
+    only_times <- return (fmap snd path_times) 
+    putStr ( show only_times ++ "\n" ) 
+ 
+ 
+main :: IO () 
+--main = passEnvVars >> testPathPop new_hope_params 1000 
+--main = passEnvVars >> factorRun new_hope_logn 
+--main = passEnvVars >> (\x -> geneticRun new_hope_params x 0 >> geneticRun new_hope_params x 10 >> geneticRun kyber_params x 0 >> geneticRun kyber_params x 10 ) 20 
+main = do 
+  decompose_test 128 
+
 
 
 -- main = do

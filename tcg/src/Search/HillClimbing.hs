@@ -9,18 +9,19 @@ import qualified Data.Map as Map (empty,insert,Map,member,mapAccumWithKey,lookup
 import Algebra.Fourier
 import Util.Logger
 import Util.Util
-import Compile.Compilers
+--import Compile.Compilers
 
 import Control.Monad
 
 
+type TimeFunc = Path -> IO Float
 type ExpandFunc a = a -> Path -> IO (a,[Path])
-type SearchFunc a = Int -> ExpandFunc a -> a -> Path -> IO [(Path,Float)]
+type SearchFunc a = Int -> ExpandFunc a -> TimeFunc -> a -> Path -> IO [(Path,Float)]
 
 hill_climbing_search :: SearchFunc a --Int -> (a -> Path -> IO (a,[Path])) -> a -> Path -> IO [Path]
-hill_climbing_search depth expand_func aux_data path =
+hill_climbing_search depth expand_func time_func aux_data path =
   do
-    time_lib <- update_time_lib [path] Map.empty 
+    time_lib <- update_time_lib time_func [path] Map.empty 
     hc_help depth time_lib expand_func aux_data [] path
   where
     hc_help ::  Int -> Map.Map Path Float -> (a -> Path -> IO (a,[Path])) -> a -> [(Path,Float)] -> Path -> IO [(Path,Float)] 
@@ -30,7 +31,7 @@ hill_climbing_search depth expand_func aux_data path =
         cur_path_time <- maybeToIO ("hill_climbing: missing cur path time: "++(show time_lib)) (Map.lookup path time_lib)
         (new_aux,new_paths) <- expand_func aux_data path -- :: IO (a,[Path])
         --logObj "Hill Climbing: expand" new_paths
-        updated_time_lib <- update_time_lib new_paths time_lib :: IO (Map.Map Path Float)
+        updated_time_lib <- update_time_lib time_func new_paths time_lib :: IO (Map.Map Path Float)
         (new_best_path,new_best_time) <- return (get_best_path updated_time_lib) :: IO (Path,Float)
         logObj "Hill Climbing Search: found new best" (new_best_path,new_best_time)
         if path == new_best_path then return (path_times++[(path,cur_path_time)]) else
@@ -56,15 +57,15 @@ hill_climbing_search depth expand_func aux_data path =
 --           return expanded_path) :: IO [[Path]]
 --         return (join expanded_paths)
         
-update_time_lib :: [Path] -> Map.Map Path Float -> IO (Map.Map Path Float)
-update_time_lib paths time_lib =
+update_time_lib :: TimeFunc -> [Path] -> Map.Map Path Float -> IO (Map.Map Path Float)
+update_time_lib time_func paths time_lib =
   foldr check_for_and_time (return time_lib) paths
   where
     check_for_and_time path io_time_lib =
       do -- IO 
         time_lib <- io_time_lib
         if Map.member path time_lib then return time_lib else
-          timePath path "DecompGen" >>= (\time -> return (Map.insert path time time_lib))
+          time_func path >>= (\time -> return (Map.insert path time time_lib))
 
 get_best_path :: Map.Map Path Float -> (Path,Float)
 get_best_path map =

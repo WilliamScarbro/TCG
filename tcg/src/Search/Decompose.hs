@@ -19,7 +19,7 @@ import Algebra.Fourier
 import Util.Logger
 import Util.Util
 import Compile.Compilers
-
+import Compile.OptimizeIR
 
 find_replacements :: Int -> Ring -> Ring -> IO [[Morphism]]
 find_replacements depth start end =
@@ -200,6 +200,7 @@ decompose_expand_func (slice_len,decompLib) path =
     (dl,paths) <- decompose_path slice_len decompLib path
     return ((slice_len,dl),paths)
 
+    
 -- an alternate version of decomp_search, built on search library functions
 decompose_search :: SearchFunc (Int,DecompLib) -> Int -> (Int,DecompLib) -> Path -> IO [(Path,Float)]
-decompose_search search_func depth sl_dl path = search_func depth decompose_expand_func sl_dl path
+decompose_search search_func depth sl_dl path = search_func depth (replace_swapjoinprod_in_expandfunc decompose_expand_func) (\p -> timePath p "DirGen") sl_dl path
