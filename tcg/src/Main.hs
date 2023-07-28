@@ -10,6 +10,7 @@ import  Search.Genetic
 import  Search.Search
 import  Search.Decompose
 import  Search.Spiral
+import  Search.HillClimbing
 import  Compile.KernelToFieldAST
 import  Compile.PathToC
 import  Compile.Compilers
