@@ -77,9 +77,11 @@ main :: IO ()
 --main = passEnvVars >> (\x -> geneticRun new_hope_params x 0 >> geneticRun new_hope_params x 10 >> geneticRun kyber_params x 0 >> geneticRun kyber_params x 10 ) 20
 main = do
   passEnvVars
-  path <- turtles (Base 64 0 64 7681) (Factor 2)
-  best_path <- decomp_search 5 5 10 path
-  putStr ( (show best_path)++"\n")
+  path <- turtles (Base 32 0 32 7681) (Factor 2)
+  paths <- decompose_search hill_climbing_search 10 (5,lib_empty 5) path
+  path_times <- sequence (fmap (\p -> timePath p "Gen") paths)
+  putStr ( show path_times ++ "\n" )
+
 
 -- main = do
 --   passEnvVars

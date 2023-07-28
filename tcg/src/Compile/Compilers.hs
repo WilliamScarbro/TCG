@@ -229,6 +229,6 @@ timePath_helper path fname cFunc =
   do
     compiled <- cFunc path
     timed <- writeCode fname compiled >> timeCodeAvg fname
-    logged <- logObj "Timed" (path,timed) >> return timed
-    return logged
+    logObj "Timed" (path,timed)
+    return timed
    

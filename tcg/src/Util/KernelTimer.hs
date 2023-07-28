@@ -3,6 +3,9 @@ module Util.KernelTimer where
 import System.Process
 import System.Environment
 import Text.Regex.Posix
+import Util.Logger
+
+import Data.Sort
 --
 
 kt_home = (getEnv "TCG_HOME") >>= (\x -> return (x++"/kernel-timer/"))
@@ -46,9 +49,27 @@ extractTimes s = let (before,match,after,_) = s =~ "[0-9]+\\.[0-9]*" :: (String,
 
 timeCodeAvg :: FilePath -> IO Float
 timeCodeAvg fname = 
-      do { str_res <- timeCode fname;
-           res <- return (extractTimes str_res);
-           sum <- return (foldr (+) 0 res);
-           total <- return (length res);
-           return (sum/(fromIntegral total)) }
+  do
+    str_res <- timeCode fname
+    res <- return (extractTimes str_res)
+    --logObj "time results" res
+    sorted_res <- return (sort res)
+    quart_len <- return (div (length sorted_res) 4)
+    res_inner_quartiles <- return (take (2*quart_len) (drop quart_len sorted_res))
+    sum <- return (foldr (+) 0 res_inner_quartiles)
+    return (sum/(fromIntegral (2*quart_len)))
 
+
+timeCodeMedian :: FilePath -> IO Float
+timeCodeMedian fname =
+  do
+    str_res <- timeCode fname
+    res <- return (extractTimes str_res)
+    logObj "time results" res
+    return (median res)
+  where
+    median l =
+      (sort l) !! (div (length l) 2)
+
+
+                  
