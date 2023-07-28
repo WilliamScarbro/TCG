@@ -29,6 +29,7 @@ executable tcg
     Search.Search,
     Search.Decompose,
     Search.Spiral,
+    Search.HillClimbing,
     Compile.KernelToFieldAST,
     Compile.PathToC,
     Compile.Compilers,

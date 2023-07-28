@@ -108,5 +108,5 @@ spiral_expand_func mrw path = do
   return (mrw,paths)
 
 
-spiral_search :: MorphismReWriter a => SearchFunc a -> Int -> a -> Path -> IO [Path]
+spiral_search :: MorphismReWriter a => SearchFunc a -> Int -> a -> Path -> IO [(Path,Float)]
 spiral_search search_func depth mrw path = search_func depth spiral_expand_func mrw path

@@ -79,9 +79,9 @@ main :: IO ()
 main = do
   passEnvVars
   path <- turtles (Base 32 0 32 7681) (Factor 2)
-  paths <- decompose_search hill_climbing_search 10 (5,lib_empty 5) path
-  path_times <- sequence (fmap (\p -> timePath p "Gen") paths)
-  putStr ( show path_times ++ "\n" )
+  path_times <- decompose_search hill_climbing_search 10 (5,lib_empty 5) path
+  only_times <- return (fmap snd path_times)
+  putStr ( show only_times ++ "\n" )
 
 
 -- main = do
