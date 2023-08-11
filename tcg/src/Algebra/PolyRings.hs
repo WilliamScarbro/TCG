@@ -55,6 +55,11 @@ prod_get_data _ = Nothing
 quo_get_data (Quo n k d r) = Just (n,k,d,r)
 quo_get_data _ = Nothing
 
+prod_dimension :: Ring -> Int
+prod_dimension (Base _ _ _ _ ) = 1
+prod_dimension (Prod _ k f) = k * (squashMaybeInt (f 0) prod_dimension)
+prod_dimension (Quo _ _ _ r) = prod_dimension r
+
 --phi
 factor :: Int -> Ring -> Maybe Ring
 factor k (Base n d b p) = Just (Prod n k (\i -> Just (Base (n `div` k) ((d `div` k)+i*(b `div` k)) b p)))

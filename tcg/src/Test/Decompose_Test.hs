@@ -24,6 +24,7 @@ import Compile.Compilers
 
 import System.Environment
 
+-- called in Search_Tests
 decomp_spec :: Spec
 decomp_spec = do
   describe "decompose Paths using library" $ do
@@ -35,7 +36,7 @@ decomp_spec = do
       (newDL,paths) <- decompose_path 5 (lib_empty 5) path
       _check_decomp_paths path paths `shouldReturn` True
 
-    it "chceck decomp lib factor4_decomp" $ do -- IO
+    it "check decomp lib factor4_decomp" $ do -- IO
       factor4_decomp <- lib_add_slice (Base 4 0 4 5,Prod 4 4 (\i -> Just (Base 1 i 4 5))) (lib_empty 10) :: IO DecompLib
       lib_check factor4_decomp `shouldBe` True
 

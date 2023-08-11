@@ -172,11 +172,27 @@ splitPathOnState (Path start morphs) split = helper start [] start morphs split
     helper start before current after split = if current == split then Just (Path start before,Path split after) else
       let m = head after in
         (apply m current) >>= (\next -> helper start (before++[m]) next (tail after) split)
-                                               
 
+      
+      
 ---
 
-buildPathForest :: Ring -> IO [Tree (Kernel)]
+-- buildPathForest :: Ring -> IO [Tree (Kernel)]
+-- buildPathForest start = do { -- IO
+--   mm <- morphismMatch; -- Match
+--   morphs <- match mm start; -- [Morphs]
+--   initial <- return [(start,mi) | mi <- morphs]; -- [(Ring,Morphism)]
+--   unfoldForestM buildPathForest_branch initial; } -- IO [Tree (Kernel)]
+  
+-- -- 
+-- buildPathForest_branch :: (Ring,Morphism) -> IO (Kernel, [(Ring, Morphism)])
+-- buildPathForest_branch (r,m) = do { -- IO
+--   mm <- morphismMatch;
+--   morphs <- match mm r;
+--   r2 <- maybeToIO ("buildPathForest calling apply"++show (m,r)) (apply m r);
+--   k <- maybeToIO "buildPathForest calling morphism_to_kernel" (morphism_to_kernel m r);
+--   return (k,[(r2,mi) | mi <- morphs ]) }
+buildPathForest :: Ring -> IO [Tree (Morphism)]
 buildPathForest start = do { -- IO
   mm <- morphismMatch; -- Match
   morphs <- match mm start; -- [Morphs]
@@ -184,13 +200,12 @@ buildPathForest start = do { -- IO
   unfoldForestM buildPathForest_branch initial; } -- IO [Tree (Kernel)]
   
 -- 
-buildPathForest_branch :: (Ring,Morphism) -> IO (Kernel, [(Ring, Morphism)])
+buildPathForest_branch :: (Ring,Morphism) -> IO (Morphism, [(Ring, Morphism)])
 buildPathForest_branch (r,m) = do { -- IO
   mm <- morphismMatch;
-  morphs <- match mm r;
   r2 <- maybeToIO ("buildPathForest calling apply"++show (m,r)) (apply m r);
-  k <- maybeToIO "buildPathForest calling morphism_to_kernel" (morphism_to_kernel m r);
-  return (k,[(r2,mi) | mi <- morphs ]) }
+  morphs <- match mm r2;
+  return (m,[(r2,mi) | mi <- morphs ]) }
 
 --
 
@@ -205,6 +220,12 @@ buildRingTree_branch r = do { --IO
   rings <- maybeToIO "buildRingTree calling apply" (sequence (fmap (\m -> apply m r) morphs));
   return (r,rings); }
 
+allReachableRings :: Ring -> IO [Ring]
+allReachableRings start =
+  do
+    ringTree <- buildRingTree start
+    return $ foldr (\r rings -> nub (r:rings)) [] ringTree
+    
 --buildMorphTree :: Ring -> IO [(Tree Morph)]
 --buildMorphTree start = do
 --  mm <- morphismMatch :: IO Match
@@ -239,6 +260,22 @@ strTree (Node x rest) = show x ++ (foldr (++) "" [ (strTree r) | r <- rest] )
 
 --
 
+seiler_path :: Int -> IO Path
+seiler_path log_n =
+  let
+    n = 2^log_n
+    p = splitting_prime (2*n)
+    start = Base n n (2*n) p
+  in
+  do
+    factor_path <- turtles start (Factor 2)
+    factor_path_end <- maybeToIO "seiler_path: failed getting end" (path_get_end factor_path)
+    (maybeToIO "seiler_path: failed appending path" (appendPath factor_path (Path factor_path_end (joinProdList (log_n-1)))))
+  where
+    joinProdList 0 = []
+    joinProdList x = [JoinProd]++(joinProdList (x-1))
+           
+                                                           
 -- rewrite turtles to work with paths
 turtles :: Ring -> Morphism -> IO Path
 turtles start turtle = let findTurtle ring = do { -- IO

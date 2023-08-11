@@ -28,8 +28,10 @@ executable tcg
     Search.Genetic,
     Search.Search,
     Search.Decompose,
+    Search.EquivalenceLibrary,
     Search.Spiral,
     Search.HillClimbing,
+    Search.Annealing,
     Compile.KernelToFieldAST,
     Compile.PathToC,
     Compile.Compilers,
@@ -38,6 +40,7 @@ executable tcg
     Compile.Monty,
     Compile.LOClasses,
     Compile.OptimizeIR,
+    Correlation.TestSample,
     Util.Util,
     Util.Logger,
     Util.KernelTimer,
@@ -58,7 +61,9 @@ executable tcg
        hashable >= 1.4.2.0,
        hspec >= 2.7,
        hspec-discover >= 2.7,
-       sort >= 1.0.0.0
+       sort >= 1.0.0.0,
+       time >= 1.8.0.2,
+       rando >= 0.0.0.4
   hs-source-dirs: src
   default-language:    Haskell2010
 
@@ -119,6 +124,8 @@ Test-Suite Search-Test
     transformers >= 0.6.1.0,
     hashable >= 1.4.2.0,
     hspec >= 2.7,
+    sort >= 1.0.0.0,
+    rando >= 0.0.0.4,
     hspec-discover >= 2.7
   default-language: Haskell2010
 

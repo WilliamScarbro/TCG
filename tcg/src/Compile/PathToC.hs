@@ -84,7 +84,7 @@ compilePathToC field kernel_opt lo_opt compile_func prune_func boiler_plate_func
     prime = get_prime start
   in
     do -- IO
-      kers <- maybeToIO "InvPath2C: failed path_get_inv_steps" (path_get_steps path)
+      kers <- maybeToIO "Path2C: failed path_get_steps" (path_get_steps path)
       compileKernelsToC field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime kers
 
 

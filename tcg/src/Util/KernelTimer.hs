@@ -37,6 +37,7 @@ extractResult fname = do { result <- testCode fname; (\x -> pure (fmap (\num -> 
 
 --
 
+
 timeCode :: FilePath -> IO String
 timeCode fname = do { -- IO 
   timer_path <- kt_relative_path "timer.sh";
@@ -71,5 +72,8 @@ timeCodeMedian fname =
     median l =
       (sort l) !! (div (length l) 2)
 
-
-                  
+timeCodeString :: String -> String -> IO Float
+timeCodeString fname code =
+  do
+    writeCode fname code
+    timeCodeAvg fname

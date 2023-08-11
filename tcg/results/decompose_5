@@ -1,0 +1,3 @@
+[1.5000004e-6,1.2000003e-6,1.0800003e-6,1.0000002e-6]
+Path (Base 32 32 64 193) [Factor 2,Extend 2 (Factor 2),Extend 2 (Extend 2 (Factor 2)),Extend 2 (Extend 2 (Extend 2 (Label 2))),Extend 2 (Extend 2 (Extend 2 (Repeat 2 (Factor 2)))),Extend 2 (Extend 2 (Extend 2 SwapQP)),Extend 2 (Extend 2 (Extend 2 (Extend 2 Define))),Extend 2 (Extend 2 (Extend 2 (Extend 2 Norm))),Extend 2 (Extend 2 (Extend 2 (Extend 2 (Repeat 1 (Factor 2))))),Extend 2 (Extend 2 (Extend 2 (Extend 2 SwapQP))),Extend 2 (Extend 2 (Extend 2 (Extend 2 (Extend 2 Define)))),Extend 2 JoinProd,JoinProd,JoinProd,JoinProd]
+Time: 59.026517616s

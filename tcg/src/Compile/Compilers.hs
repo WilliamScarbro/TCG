@@ -214,7 +214,7 @@ compiler_functional :: Path -> IO String
 compiler_functional = compilePathToFunc
 
 --
-                      
+
 timePath :: Path -> String -> IO Float
 timePath path fname = timePath_helper path fname compilePath
 

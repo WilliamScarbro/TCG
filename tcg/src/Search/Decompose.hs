@@ -9,8 +9,10 @@ import Data.Tree
 import System.Random
 import Control.Monad
 import Data.Maybe
+import System.Random (randomRIO)
 
 import Search.HillClimbing
+import Search.Annealing
 import Search.Search
 import Algebra.FField
 import Algebra.PolyRings
@@ -29,20 +31,23 @@ find_replacements depth start end =
     fr_help i cur end so_far =
       if cur==end then return [so_far] else
         if i<=0 then return [] else
-          do -- IO
-            morphs <- morphismMatch >>= (\x -> match x cur) :: IO [Morphism]
-            all_possible <- return ( do -- List
-              m <- morphs :: [Morphism]
-              next <- return (apply m cur) :: [Maybe Ring]
-              maybe_new <- return (next >>= (\ring -> return (fr_help (i-1) ring end (so_far++[m])))) :: [Maybe (IO [[Morphism]])]
-              new <- return (join (maybeToIO "FindReplacements: failed apply" maybe_new)) :: [IO [[Morphism]]]
-              return new)
-            possible <- fmap join (sequence all_possible) :: IO [[Morphism]]
-            return possible
-
+          if prod_dimension cur > prod_dimension end then -- prod_dimension is monotonically increasing
+            return [] else
+            do -- IO
+              morphs <- morphismMatch >>= (\x -> match x cur) :: IO [Morphism]
+              all_possible <- return ( do -- List
+                m <- morphs :: [Morphism]
+                next <- return (apply m cur) :: [Maybe Ring]
+                maybe_new <- return (next >>= (\ring -> return (fr_help (i-1) ring end (so_far++[m])))) :: [Maybe (IO [[Morphism]])]
+                new <- return (join (maybeToIO "FindReplacements: failed apply" maybe_new)) :: [IO [[Morphism]]]
+                return new)
+              possible <- fmap join (sequence all_possible) :: IO [[Morphism]]
+              return possible
+  
 
 --
 
+--type DecompLib = Map.Map (Ring,Ring) [[Morphism]]
 data DecompLib = DecompLib { lib :: Map.Map (Ring,Ring) [[Morphism]], search_depth :: Int } deriving Show
 
 generate_decomp_lib :: Int -> [(Ring,Ring)] -> IO DecompLib
@@ -73,12 +78,12 @@ lib_lookup slice decompLib =
   
 lib_add_slice :: (Ring,Ring) -> DecompLib -> IO DecompLib
 lib_add_slice (start,end) decompLib  =
-  do -- IO
-    replacements <- find_replacements (search_depth decompLib) start end :: IO [[Morphism]]
-    return (if lib_member (start,end) decompLib then
-              decompLib
-             else
-              lib_insert (start,end) replacements decompLib)
+  if lib_member (start,end) decompLib then
+    return decompLib
+    else
+    do -- IO
+      replacements <- find_replacements (search_depth decompLib) start end
+      return $ lib_insert (start,end) replacements decompLib
       
 lib_add_slices :: [(Ring,Ring)] -> DecompLib -> IO DecompLib
 lib_add_slices slices decompLib =
@@ -101,29 +106,32 @@ lib_check decompLib =
 
 
 decompose_path :: Int -> DecompLib -> Path -> IO (DecompLib,[Path])
-decompose_path slice_len decompLib path =
+decompose_path sample_size decompLib path =
   let
     morphs = path_get_morphs path :: [Morphism]
     start = path_get_start path :: Ring
-    slices = get_slices slice_len (length morphs +1) :: [(Int,Int)]
+    --slices = get_slices slice_len (length morphs +1) :: [(Int,Int)]
+    slices = get_slices (search_depth decompLib) (length morphs +1) :: [(Int,Int)]
   in
-    join (maybeToIO "decompose_path: failed"
-          ( do -- Maybe
-              states <- path_get_states path :: Maybe [Ring]
-              state_slices <- return (fmap (\(start,end) -> (states!!start,states!!end)) slices) :: Maybe [(Ring,Ring)]
-              return
-                (do -- IO
-                  updated_DL <- lib_add_slices state_slices decompLib :: IO DecompLib
-                  alt_morphs <- get_alt_morphs updated_DL slices states morphs :: IO [[Morphism]]
-                  alt_paths <- return (fmap (\morphs -> Path start morphs) alt_morphs) :: IO [Path]
-                  return (updated_DL,alt_paths) :: IO (DecompLib,[Path])
-                ) :: Maybe (IO (DecompLib,[Path]))
-          ))
-   where
-     get_slices :: Int -> Int -> [(Int,Int)]
-     get_slices max_len len =
-       join [[(i,j) |j<-[i+1..(min (i+max_len) (len-1))]] | i<-[0..(len-1)]]
-     
+    do -- IO
+      sample_slices <- takeRandom sample_size slices :: IO [(Int,Int)]
+      states <- maybeToIO "decompose_path: failed getting states" (path_get_states path) :: IO [Ring]
+      state_slices <- return (fmap (\(start,end) -> (states!!start,states!!end)) sample_slices) :: IO [(Ring,Ring)]
+      updated_DL <- lib_add_slices state_slices decompLib :: IO DecompLib
+      alt_morphs <- get_alt_morphs updated_DL sample_slices states morphs :: IO [[Morphism]]
+      alt_paths <- return (fmap (\morphs -> Path start morphs) alt_morphs) :: IO [Path]
+      return (updated_DL,nub alt_paths) :: IO (DecompLib,[Path])
+    where
+      get_slices :: Int -> Int -> [(Int,Int)]
+      get_slices max_len len =
+        join [[(i,j) |j<-[i+1..(min (i+max_len) (len-1))]] | i<-[0..(len-1)]]
+        
+      takeRandom :: Int -> [a] -> IO [a]
+      takeRandom n xs | n <= 0 = return xs
+                      | otherwise = do
+                          indices <- replicateM n (randomRIO (0, length xs - 1))
+                          return $ map (xs !!) indices
+
 get_alt_morphs :: DecompLib -> [(Int,Int)] -> [Ring] -> [Morphism] -> IO [[Morphism]]
 get_alt_morphs decompLib slices states morphs =
   let
@@ -193,14 +201,67 @@ decomp_search search_depth slice_len iterations path =
 
 --decompose_path :: Int -> DecompLib -> Path -> IO (DecompLib,[Path])
 
-decompose_expand_func :: ExpandFunc (Int,DecompLib)
+decompose_expand_hillclimbing :: ExpandFunc (Int,DecompLib)
   -- (Int,DecompLib) -> Path -> IO ((Int,DecompLib),[Path])
-decompose_expand_func (slice_len,decompLib) path =
+decompose_expand_hillclimbing (slice_len,decompLib) path =
   do
-    (dl,paths) <- decompose_path slice_len decompLib path
+    (dl,paths) <- decompose_path 100 decompLib path
     return ((slice_len,dl),paths)
 
     
 -- an alternate version of decomp_search, built on search library functions
 decompose_search :: SearchFunc (Int,DecompLib) -> Int -> (Int,DecompLib) -> Path -> IO [(Path,Float)]
-decompose_search search_func depth sl_dl path = search_func depth (replace_swapjoinprod_in_expandfunc decompose_expand_func) (\p -> timePath p "DirGen") sl_dl path
+decompose_search search_func depth sl_dl path = search_func depth (replace_swapjoinprod_in_expandfunc decompose_expand_hillclimbing) compilePath sl_dl path
+
+
+instance AnnealingEnv DecompLib where
+  update_env_with_temp temp dl = DecompLib (lib dl) (round ( temp * 4 ) + 3 ) -- assumes temp is in [0..1]
+  
+decompose_expand_annealing :: DecompLib -> Path -> IO (DecompLib,[Path])
+decompose_expand_annealing dl path =
+  decompose_path 1 dl path 
+
+--
+
+-- Function to randomly select an element from a list
+randomChoiceIO :: [a] -> IO a
+randomChoiceIO xs = do
+    index <- randomRIO (0, length xs - 1)
+    return $ xs !! index
+
+-- Function to find a path from start Ring to end Ring using random search
+find_replacement :: Int -> Ring -> Ring -> IO [Morphism]
+find_replacement search_depth start end = _tryXTimes search_depth 1000 start end
+    -- Check if start Ring and end Ring are equal, return an empty list of morphisms
+  
+  where
+    _tryXTimes :: Int -> Int -> Ring -> Ring -> IO [Morphism]
+    _tryXTimes search_depth fail_max start end
+      | fail_max <= 0 = return []
+      | otherwise =
+        do
+          possible <- _findReplacementHelper search_depth start end
+          possible_end <- maybeToIO "find_replacement: failed get end" $ path_get_end (Path start possible)
+          if end == possible_end then
+            return possible
+            else
+            _tryXTimes search_depth (fail_max) start end
+            
+-- Helper function to recursively find a replacement
+    _findReplacementHelper :: Int -> Ring -> Ring -> IO [Morphism]
+    _findReplacementHelper _ start end | start == end = return []
+    _findReplacementHelper 0 _ _ = return []  -- Terminate the search when search_depth is 0
+    _findReplacementHelper search_depth start end = do
+      -- Get a list of possible morphisms that can be applied to the start Ring
+      morphisms <- morphismMatch >>= (\x -> match x start) :: IO [Morphism]
+      if null morphisms
+        then return []  -- If no morphisms are available, terminate the search
+        else do
+            -- Randomly select a morphism from the list
+            selectedMorphism <- randomChoiceIO morphisms
+            -- Apply the selected morphism to the start Ring to get a new Ring
+            newRing <- maybeToIO "findReplacementHelper: failed apply" $ apply selectedMorphism start
+            -- Recursively find the path from the new Ring to the end Ring with reduced search_depth
+            remainingPath <- _findReplacementHelper (search_depth - 1) newRing end
+            -- Return the selected morphism followed by the remaining path
+            return (selectedMorphism : remainingPath)

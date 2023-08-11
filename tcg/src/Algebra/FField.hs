@@ -152,6 +152,10 @@ factor_pairs n =
     factors = filter (\x -> x /= n) (non_triv_factors n)
   in
     nub [(f,div n f) |f<-factors]
-    
+
+prime_factors :: Integral a => a -> [a]
+prime_factors n =
+  filter is_prime (non_triv_factors n)
+  
 instance FiniteField ResInt where
   inv = ff_inv
