@@ -133,10 +133,10 @@ equiv_lib_test elib log_n =
   in
   do
     passEnvVars
-    --let path = (Path (Base n n (2*n) p) [Factor n])
-    path <- seiler_path log_n
+    let path = (Path (Base n n (2*n) p) [Factor n])
+    --path <- seiler_path log_n
     ((history,best),elapsedTime) <- timeCodeBlock $ do
-      simulatedAnnealing id_guided_expand_annealing (timeCodeString "Gen") compilePath (elib,10,1000) path
+      simulatedAnnealing id_guided_expand_annealing (timeCodeString "Gen") compilePath (elib,10,100) path
     only_times <- return (fmap snd history)
     writeFile ("results/equiv_annealing_"++show log_n) ((show only_times)++"\n"
                                                   ++(show best)++"\n"

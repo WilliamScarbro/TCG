@@ -256,28 +256,36 @@ match_symbolic_identity morphs symmorphs = msi_help Map.empty morphs symmorphs
                return (msi_help new_factor_map morphs symmorphs)
            )
 
-match_symbolic_identity_autofunctor :: [Morphism] -> [SymbolicMorphism] -> [(Morphism -> Morphism,VariableMap)]
+match_symbolic_identity_autofunctor :: [Morphism] -> [SymbolicMorphism] -> [(Morphism -> Morphism, Morphism -> Maybe Morphism, VariableMap)]
 match_symbolic_identity_autofunctor morphs symmorphs =
   let
     unwrapped_maps = join ( maybeToList (
         do -- Maybe
-          (wrap_func,uw_morphs) <- unwrap_morph_list morphs
+          (wrap_func,unwrap_func,uw_morphs) <- unwrap_morph_list morphs
           let variable_maps = match_symbolic_identity_autofunctor uw_morphs symmorphs
-          return [(wrap_func . wrap_func2,vm) | (wrap_func2,vm) <- variable_maps]
+          return [(wrap_func . wrap_func2, (\m -> unwrap_func m >>= unwrap_func2),vm) | (wrap_func2,unwrap_func2,vm) <- variable_maps]
       ))
-    inplace_maps = [ (id,vm) | vm <- match_symbolic_identity morphs symmorphs ]
+    inplace_maps = [ (id,return,vm) | vm <- match_symbolic_identity morphs symmorphs ]
   in
     inplace_maps ++ unwrapped_maps
   where
-    unwrap_morph_list :: [Morphism] -> Maybe (Morphism -> Morphism,[Morphism])
+    unwrap_morph_list :: [Morphism] -> Maybe (Morphism -> Morphism, Morphism -> Maybe Morphism,[Morphism])
     unwrap_morph_list ((Extend n m):morphs) =
       do
           unwrapped_morphs <- iterate_unwrap_extend n morphs
-          return ((\m -> Extend n m),m:unwrapped_morphs)  
+          let unwrap_func (Extend en m) | en == n = Just m
+                                        | otherwise = Nothing
+              unwrap_func _ = Nothing
+              wrap_func m = Extend n m
+          return (wrap_func,unwrap_func,m:unwrapped_morphs)  
     unwrap_morph_list ((Repeat n m):morphs) =
       do
           unwrapped_morphs <- iterate_unwrap_repeat n morphs
-          return ((\m -> Repeat n m),m:unwrapped_morphs)
+          let unwrap_func (Repeat en m) | en == n = Just m
+                                        | otherwise = Nothing
+              unwrap_func _ = Nothing
+              wrap_func m = Repeat n m
+          return (wrap_func,unwrap_func,m:unwrapped_morphs)
     unwrap_morph_list _ = Nothing
 
     iterate_unwrap_extend n1 ((Extend n2 m):morphs) | n1 == n2 = iterate_unwrap_extend n1 morphs >>= (\mlist -> Just (m:mlist))
@@ -327,12 +335,12 @@ apply_identity identity morphs =
     possible_matches = filter (\sm_list -> length sm_list == length morphs) identity :: [[SymbolicMorphism]]
   in
     nub $ do -- List
-      (mfunc,var_map) <- get_first_match morphs possible_matches :: [(Morphism->Morphism,VariableMap)]
+      (mfunc,_,var_map) <- get_first_match morphs possible_matches :: [(Morphism->Morphism,Morphism->Maybe Morphism,VariableMap)]
       nub $ do
         mlist <- identity :: [[SymbolicMorphism]]
         maybeToList (sequence (fmap (\m -> unsymbolize_morphism var_map m >>= return . mfunc ) mlist)) :: [[Morphism]]
   where
-    get_first_match :: [Morphism] -> [[SymbolicMorphism]] -> [(Morphism->Morphism,VariableMap)]
+    get_first_match :: [Morphism] -> [[SymbolicMorphism]] -> [(Morphism->Morphism,Morphism->Maybe Morphism,VariableMap)]
     get_first_match morphs (pm:possible_matches) =
       let
         representations = match_symbolic_identity_autofunctor morphs pm
@@ -408,26 +416,33 @@ instance AnnealingEnv (EquivalenceLibrary,Int,Int) where
 
 -- identity guided search
 
-type SymbolicMatchContext = (Morphism->Morphism,VariableMap,[SymbolicMorphism])
+-- wrap func, unwrap func
+type SymbolicMatchContext = (Morphism->Morphism,Morphism->Maybe Morphism,VariableMap,[SymbolicMorphism])
 
-instance Eq (Morphism->Morphism) where
+instance Eq (Morphism-> Morphism) where
   (==) f1 f2 = (f1 IdR) == (f2 IdR)
 
 instance Show (Morphism->Morphism) where
   show mfunc = show . mfunc $ IdR
-  
+
+instance Eq (Morphism-> Maybe Morphism) where
+  (==) f1 f2 = True -- rely on forward function to assess equality
+
+instance Show (Morphism->Maybe Morphism) where
+  show mfunc = "<unwrap_func>"
+
 match_identity :: [Morphism] -> [[SymbolicMorphism]] -> [SymbolicMatchContext]
 match_identity morphs identity =
   let
     possible_matches = filter (\sm_list -> length sm_list == length morphs) identity :: [[SymbolicMorphism]]
   in
     nub $ do -- List
-      (mfunc,var_map) <- get_first_match morphs possible_matches :: [(Morphism->Morphism,VariableMap)]
+      (wfunc,uwfunc,var_map) <- get_first_match morphs possible_matches :: [(Morphism->Morphism,Morphism->Maybe Morphism,VariableMap)]
       do
-        el <- identity  -- return the entire identity if any elements match, assumes same mfunc and var_map for every identity
-        return (mfunc,var_map,el)
+        el <- identity  -- return the entire identity if any elements match, assumes same wfunc and var_map for every identity
+        return (wfunc,uwfunc,var_map,el)
   where
-    get_first_match :: [Morphism] -> [[SymbolicMorphism]] -> [(Morphism->Morphism,VariableMap)]
+    get_first_match :: [Morphism] -> [[SymbolicMorphism]] -> [(Morphism->Morphism,Morphism->Maybe Morphism,VariableMap)]
     get_first_match morphs (pm:possible_matches) =
       let
         representations = match_symbolic_identity_autofunctor morphs pm
@@ -442,48 +457,45 @@ match_identity morphs identity =
 --msm_help :: VariableMap -> Morphism -> SymbolicMorphism -> [VariableMap]
 
 match_against_context :: Morphism -> SymbolicMatchContext -> [SymbolicMatchContext]
-match_against_context _ (mfunc,var_map,[]) = [] 
-match_against_context morph (mfunc,var_map,sm:sym_morphs) =
-  let
-    mapped_morph = mfunc morph
-  in
-    do -- []
-      new_var_map <- msm_help var_map mapped_morph sm
-      return (mfunc,new_var_map,sym_morphs)
+match_against_context _ (wfunc,uwfunc,var_map,[]) = [] 
+match_against_context morph (wfunc,uwfunc,var_map,sm:sym_morphs) =
+  do -- []
+    mapped_morph <- maybeToList (uwfunc morph)
+    new_var_map <- msm_help var_map mapped_morph sm
+    return (wfunc,uwfunc,new_var_map,sym_morphs)
       
 identity_guided_search :: EquivalenceLibrary -> Ring -> Ring -> [Morphism] -> IO [[Morphism]]
 identity_guided_search elib start end morphs =
   let
     smcs = join (fmap (match_identity morphs) elib) :: [SymbolicMatchContext]
   in
-    logObj "igs_call" (start,end,morphs) >> igs_help smcs start end []
+    do
+      res <- igs_help smcs start end []
+      --logObj "igs call" (start,end,morphs,res)
+      return res
   where
     igs_help :: [SymbolicMatchContext] -> Ring -> Ring -> [Morphism] -> IO [[Morphism]]
-    igs_help smcs cur end so_far | cur == end = logObj "found path" so_far >> (return . return  $ so_far)
-                                 | null smcs = logObj "aborted path" so_far >> (return . return $ [])
-                                 -- | prod_dimension cur > prod_dimension end = return . return $ []
+    igs_help smcs cur end so_far | cur == end =  (return . return  $ so_far) -- logObj "found path" so_far >>
+                                 | null smcs = (return []) --  logObj "aborted path" so_far >>
+                                 | prod_dimension cur > prod_dimension end = return []
                                  | otherwise =
       do -- IO
-        logObj "expanding " (cur,smcs,so_far)
+        --logObj "expanding " (cur,smcs,so_far)
         mm <- morphismMatch
         new_morphs <- match mm cur :: IO [Morphism]
         next_rings_with_morph <- sequence . fmap (\m -> io_apply m cur>>= (\r -> return (r,m))) $ new_morphs :: IO [(Ring,Morphism)]
-        logObj "morphs " (fmap snd next_rings_with_morph)
+        --logObj "morphs " (fmap snd next_rings_with_morph)
         fmap (filter (not . null)) . fmap nub . fmap join . sequence $ do
               (next_ring,new_morph) <- next_rings_with_morph :: [(Ring,Morphism)]
               do -- []
                 smc <- smcs :: [SymbolicMatchContext]
                 let new_smcs = match_against_context new_morph smc :: [SymbolicMatchContext]
-                --return . fmap nub $ igs_help new_smcs next_ring end (so_far++[new_morph]) :: [IO [[Morphism]]]
+
                 if not . null $  new_smcs then
                   return . fmap nub $ igs_help new_smcs next_ring end (so_far++[new_morph]) :: [IO [[Morphism]]]
                   else
-                  [return []]
-                  -- rewrite using state, some  how variables are out of sync
-                  
---              new_smcs <- return . join . fmap (match_against_context new_morph) $ smcs :: [[SymbolicMatchContext]]
---              return . (fmap nub) $ igs_help new_smcs next_ring end (so_far++[new_morph]) :: [IO [[Morphism]]]
-              
+                  []
+
 identity_guided_expansion :: EquivalenceLibrary -> Int -> Int -> Path -> IO [Path]
 identity_guided_expansion elib slice_len sample_size path =
   let
@@ -492,62 +504,38 @@ identity_guided_expansion elib slice_len sample_size path =
     slices = get_slices slice_len (length morphs +1) :: [(Int,Int)]
   in
     do -- IO
+      path_end <- maybeToIO "failed get end" $ path_get_end path
       sample_slices <- takeRandom sample_size slices :: IO [(Int,Int)]
       states <- maybeToIO "identity guided expansion: failed getting states" (path_get_states path) :: IO [Ring]
 
-      fmap nub . fmap join . sequence $ do -- []
+      expansion <- fmap nub . fmap join . sequence $ do -- []
         (start,end) <- sample_slices :: [(Int,Int)]
         let (start_state,end_state) = (states!!start,states!!end) :: (Ring,Ring)
         let morphism_slice = drop start (take end morphs) :: [Morphism]
-
-        --check morph slice
-        --let implied_end = path_get_end (Path start_state morphs)
-        --return $ implied_end == Just end_state
 
         return $ do -- IO
           alt_morph_lists <- identity_guided_search elib start_state end_state morphism_slice :: IO [[Morphism]]
           let alt_paths = fmap (\alt_morph_list -> Path path_start (take start morphs ++ alt_morph_list ++ drop end morphs)) alt_morph_lists
           let unique_alt_paths = nub alt_paths
-          let legal_alt_paths = filter check_legal_path unique_alt_paths
+          let legal_alt_paths = filter (check_legal_path path_end) unique_alt_paths
+          if length legal_alt_paths < length unique_alt_paths then
+            logObj "all paths, legal paths" (alt_paths,legal_alt_paths)
+            else
+            return ()
           return legal_alt_paths :: IO [Path]
-
-
-      -- let state_slices = fmap (\(start,end) -> (states!!start,states!!end)) sample_slices :: [(Ring,Ring)]
-      -- let morphism_slices = fmap (\(start,end) -> (drop start (take end morphs))) sample_slices :: [[Morphism]]
-      -- let zipped_slice_state_morphs = zip slice (zip state_slices morphism_slices) :: [((Int,Int),((Ring,Ring),[Morphism]))]
-
-      -- check morph slices
-      -- logObj "identity guided expansion: check morph slices" . all id $ do -- list
-      --   ((start,end),morphs) <- zipped_state_morphs
-      --   let implied_end = path_get_end (Path start morphs)
-      --   return $ implied_end == Just end
-
+      logObj "identity_guided_expansion" (length expansion)
+      return expansion
       
-      -- let alt_morphs_io = fmap join . sequence . fmap (\((start,end),morphs) -> identity_guided_search elib start end morphs) $ zip state_slices morphism_slices :: IO [[Morphism]]
-      -- result <- try alt_morphs_io :: IO (Either PatternMatchFail [[Morphism]])
-      -- alt_morphs <- case result of
-      --   Right x -> return x
-      --   Left ex -> logObj "caught exception" ex >> return []
-
-      -- alt_morphs_io = fmap join . sequence . fmap (\((start,end),morphs) -> (startidentity_guided_search elib start end morphs) $ zip state_slices morphism_slices :: IO [[Morphism]]
-      
-      -- alt_paths <- return (nub (fmap (\morphs -> Path start morphs) alt_morphs)) :: IO [Path]
-      -- sequence $ fmap io_path_get_end alt_paths
-      -- legal_alt_paths <- return (filter check_legal_path alt_paths) :: IO [Path]
-      -- logObj "identity guided expansion: slice_len, sample_size, all_paths, legal_paths" (slice_len,sample_size,length alt_paths,length legal_alt_paths)-- filter (not . check_legal_path) alt_paths)
-      -- if null legal_alt_paths then
-      --   return [path]
-      --   else
-      --   return (nub legal_alt_paths) :: IO [Path]
-      -- return alt_paths
   where
     get_slices :: Int -> Int -> [(Int,Int)]
     get_slices max_len len =
       join [[(i,j) |j<-[i+1..(min (i+max_len) (len-1))]] | i<-[0..(len-1)]]
 
-    check_legal_path :: Path -> Bool
-    check_legal_path path = isJust (path_get_end path)
-
+    check_legal_path :: Ring -> Path -> Bool
+    check_legal_path end path =
+      fromMaybe False $ do
+        found_end <- (path_get_end path)
+        return (end == found_end)
         
     takeRandom :: Int -> [a] -> IO [a]
     takeRandom n xs | n <= 0 = return xs
@@ -555,14 +543,6 @@ identity_guided_expansion elib slice_len sample_size path =
                         indices <- replicateM n (randomRIO (0, length xs - 1))
                         return $ map (xs !!) indices
                       
-try_ige :: EquivalenceLibrary -> Int -> Int -> Path -> IO [Path]
-try_ige elib sl ss path =
-  do
-    result <- try $ identity_guided_expansion elib sl ss path :: IO (Either PatternMatchFail [Path])
-    case result of
-      Right x -> return x
-      Left ex -> logObj "caught exception" ex >> return []
-
 id_guided_expand_annealing :: (EquivalenceLibrary,Int,Int) -> Path -> IO ((EquivalenceLibrary,Int,Int),[Path])
 id_guided_expand_annealing (elib,slice_len,sample_size) path =
   do
