@@ -10,6 +10,7 @@ module Algebra.FField where
 import qualified Data.Set as Set
 
 import Data.List
+import Control.Monad
 
 --import AbstractAlgebra.Fields
 
@@ -159,3 +160,49 @@ prime_factors n =
   
 instance FiniteField ResInt where
   inv = ff_inv
+
+
+-- Find the smallest prime factor of a number
+smallestPrimeFactor :: Int -> Int
+smallestPrimeFactor n = head [x | x <- [2..n], n `mod` x == 0]
+
+-- Factorize a number into a list of prime factors
+factorize :: Int -> [Int]
+factorize 1 = []
+factorize n =
+    let smallestFactor = smallestPrimeFactor n
+    in smallestFactor : factorize (n `div` smallestFactor)
+
+-- Generate all unique lists where two elements are replaced by their product
+generateReplacedLists :: [Int] -> [[Int]]
+generateReplacedLists xs =
+    nub [replaceWithProduct xs i j | (i, j) <- pairs]
+    where pairs = join [[(i, j) | i <- [0..length xs - 1], i < j] | j <- [0..length xs -1]]
+
+-- Replace two elements in a list with their product
+replaceWithProduct :: [Int] -> Int -> Int -> [Int]
+replaceWithProduct xs i j =
+    let product = xs !! i * xs !! j
+        remove i x = (take i x) ++ (drop (i+1) x)
+    in product : (remove i (remove j xs)) -- only works as long as i < j
+    
+-- Generate factorizations of length l by replacing elements in a list
+generateFactorizations :: Int -> Int -> [[Int]]
+generateFactorizations n l = 
+   let
+     factors = factorize n
+   in
+     if l <= 0 || length factors < l then
+       []
+       else
+       gf_help l factors
+  where
+     gf_help :: Int -> [Int] -> [[Int]]
+     gf_help l factor_list =
+       if length factor_list == l then
+         return factor_list
+         else
+         nub . join $ do -- []
+           new_list <- generateReplacedLists factor_list
+           return (gf_help l new_list)
+           

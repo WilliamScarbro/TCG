@@ -54,6 +54,13 @@ path_get_end (Path start (m:morphs)) = let new_start = apply m start in
   new_start >>= (\r -> (path_get_end (Path r morphs)))
 path_get_end (Path cur []) = Just cur
 
+io_path_get_end :: Path -> IO Ring
+io_path_get_end (Path start (m:morphs)) =
+  do
+    next <- io_apply m start
+    io_path_get_end (Path next morphs)
+io_path_get_end (Path cur []) = return cur
+
 path_get_states :: Path -> Maybe [Ring]
 path_get_states (Path start morphs) = traverse id (scanl (\prev_state m -> prev_state >>= apply m) (Just start) morphs)
 

@@ -8,6 +8,7 @@ import Algebra.FField
 import Algebra.PolyRings
 import Algebra.NTT
 import Util.Logger
+import Util.Util
 
 import Data.List
 import Data.Maybe
@@ -64,6 +65,10 @@ apply (Repeat i m) (Quo n j k x) | i==j = (apply m x) >>= (\y -> Just (Quo n j k
                                  | otherwise = Nothing
 apply IdR x = Just x
 apply (MInverse m) _ = Nothing -- cannot apply Inverse Morphism
+apply _ _ = Nothing
+
+io_apply :: Morphism -> Ring -> IO Ring
+io_apply m r = maybeToIO ("Failed apply '"++show m++"' '"++show r++"'") $ apply m r
 
 ---
 

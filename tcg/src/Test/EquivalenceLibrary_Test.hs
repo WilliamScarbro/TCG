@@ -19,6 +19,7 @@ import Util.Util
 import Test.Util
 import Util.KernelTimer
 import Util.Logger
+import Util.SmallEqLib
 import Compile.FAST
 import Test.Hspec
 import System.Random
@@ -27,12 +28,12 @@ import Compile.Compilers
 
 import System.Environment
 
-instance Show (Morphism -> Morphism) where
-  show f = show (f IdR)
+-- instance Show (Morphism -> Morphism) where
+--   show f = show (f IdR)
 
 
-instance Eq (Morphism -> Morphism) where
-  (==) f1 f2 = f1 IdR == f2 IdR
+-- instance Eq (Morphism -> Morphism) where
+--   (==) f1 f2 = f1 IdR == f2 IdR
 
 -- called in Search_Tests
 eqlib_spec :: Spec
@@ -53,6 +54,14 @@ eqlib_spec =
       do
         match_maps <- return (match_symbolic_identity_autofunctor morphs symmorphs)
         match_maps `shouldBe` variable_maps
+
+    id_guided_search_test elib path rewrites =
+      do
+        let start = path_get_start path
+        end <- io_path_get_end path
+        let morphs = path_get_morphs path
+        found_rewrites <- identity_guided_search elib start end morphs
+        found_rewrites `shouldBe` rewrites
   in    
   do
     describe "test equivalence library functions" $ do
@@ -96,3 +105,9 @@ eqlib_spec =
           [SymExtend ["a"] SymSwapQQ] 
           [(id,Map.fromList [("a",2)])]
  
+
+      it "test identity guided search case 1" $ do
+        id_guided_search_test
+          [small_eq_lib !! 0]
+          (Path (Base 8 0 8 4) [Factor 4])
+          [[Factor 4],[Label 2,Repeat 2 (Factor 4),SwapQP,Extend 4 Define]]     
