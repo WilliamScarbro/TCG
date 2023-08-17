@@ -29,3 +29,10 @@ replaceAt from to r xs =
   in
     [prefix ++ r_el ++ suffix |r_el<-r]
 
+timeCodeBlock :: IO a -> IO (a, NominalDiffTime)
+timeCodeBlock action = do
+    startTime <- getCurrentTime
+    result <- action
+    endTime <- getCurrentTime
+    let elapsedTime = diffUTCTime endTime startTime
+    return (result, elapsedTime)

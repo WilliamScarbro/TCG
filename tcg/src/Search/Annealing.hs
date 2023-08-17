@@ -48,14 +48,20 @@ simulatedAnnealing expand heuristic compile initEnv init = evalStateT go initial
         then return (reverse history,bestState)
         else do -- StateT
           -- Expand state and choose random neighbor
-          (newEnv, neighbors) <- liftIO $ expand env state
+          let expand_io = expand env state
+          ((newEnv,neighbors),expand_time) <- ligtIO $ timeCodeBlock expand_io
+
           let neighbors_with_current = if null neighbors then [state] else neighbors
           newStateIndex <- liftIO $ randomRIO (0, length neighbors_with_current - 1)
           let newState = neighbors_with_current !! newStateIndex
 
           -- Find costs for current and new state
-          newCost <- liftIO $ findWithCache newState cache heuristic compile
+
+          let io_newCost = findWithCache newState cache heuristic compile
+          (newCost,newCost_time) <- ligtIO $ timeCodeBlock io_newCost
+          
           cost <- liftIO $ findWithCache state cache heuristic compile
+
 
           -- Update cache
           let cache' = Map.insert (unsafePerformIO $ compile newState) newCost cache
@@ -83,7 +89,8 @@ simulatedAnnealing expand heuristic compile initEnv init = evalStateT go initial
 
           -- Log current annealing state
           liftIO $ logObj "Annealing State" (state'', temp', newCost) 
-
+          liftIO $ logObj "Times newCost expand" (newCost_time,expand_time)
+          
           -- Update state
           put (temp', state'', cache'', env'', history', bestState')
           go
