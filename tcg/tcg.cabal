@@ -23,6 +23,7 @@ executable tcg
     Algebra.Fourier,
     Algebra.NTT,
     Algebra.PolyRings,
+    Algebra.BetterAlgebra,
     Compile.CompileKernel,
     Search.GeneticCode,
     Search.Genetic,
@@ -40,6 +41,7 @@ executable tcg
     Compile.Monty,
     Compile.LOClasses,
     Compile.OptimizeIR,
+    Compile.KernelToVectorFAST,
     Correlation.TestSample,
     Util.Util,
     Util.Logger,
@@ -100,6 +102,8 @@ executable tcg-benchmark
        random-shuffle >= 0.0.4,
        transformers >= 0.6.1.0,
        hashable >= 1.4.2.0,
+       rando >= 0.0.0.4,
+       time >= 1.8.0.2,
        hspec >= 2.7,
        hspec-discover >= 2.7
   hs-source-dirs: src
@@ -125,6 +129,7 @@ Test-Suite Search-Test
     hashable >= 1.4.2.0,
     hspec >= 2.7,
     sort >= 1.0.0.0,
+    time >= 1.8.0.2,
     rando >= 0.0.0.4,
     hspec-discover >= 2.7
   default-language: Haskell2010
@@ -147,6 +152,9 @@ Test-Suite Generate-Test
     transformers >= 0.6.1.0,
     hashable >= 1.4.2.0,
     hspec >= 2.7,
+    rando >= 0.0.0.4,
+    time >= 1.8.0.2,
+    sort >= 1.0.0.0,
     hspec-discover >= 2.7
   default-language: Haskell2010
   
@@ -170,6 +178,9 @@ Test-Suite Compile-Test
     transformers >= 0.6.1.0,
     hashable >= 1.4.2.0,
     hspec >= 2.7,
+    rando >= 0.0.0.4,
+    sort >= 1.0.0.0,
+    time >= 1.8.0.2,
     hspec-discover >= 2.7
   default-language: Haskell2010
   --, test-framework, test-framework-hunit, HSpec
@@ -195,6 +206,9 @@ Test-Suite Algebra-Test
     transformers >= 0.6.1.0,
     hashable >= 1.4.2.0,
     hspec >= 2.7,
+    time >= 1.8.0.2,
+    rando >= 0.0.0.4,
+    sort >= 1.0.0.0,
     hspec-discover >= 2.7
   default-language: Haskell2010
   --, test-framework, test-framework-hunit, HSpec

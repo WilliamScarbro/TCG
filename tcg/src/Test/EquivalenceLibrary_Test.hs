@@ -50,10 +50,10 @@ eqlib_spec =
         match_maps <- return (match_symbolic_identity morphs symmorphs)
         match_maps `shouldBe` variable_maps
         
-    match_ident_functor_test morphs symmorphs variable_maps =
+    match_ident_functor_test morphs symmorphs morph_map var_map =
       do
-        match_maps <- return (match_symbolic_identity_autofunctor morphs symmorphs)
-        match_maps `shouldBe` variable_maps
+        (morph_map,_,var_map) <- return (head (match_symbolic_identity_autofunctor morphs symmorphs))
+        (morph_map,var_map) `shouldBe` (morph_map,var_map)
 
     id_guided_search_test elib path rewrites =
       do
@@ -97,13 +97,15 @@ eqlib_spec =
         match_ident_functor_test
           [Extend 2 (Label 2), Extend 2 (Factor 3)]
           [SymLabel ["a"],SymFactor ["b"]]
-          [(\m -> Extend 2 m,Map.fromList [("a",2),("b",3)])]
+          (\m -> Extend 2 m)
+          (Map.fromList [("a",2),("b",3)])
 
       it "test match_symbolic_identity_autofunctor case 2" $ do
         match_ident_functor_test
           [Extend 2 (SwapQQ)]
           [SymExtend ["a"] SymSwapQQ] 
-          [(id,Map.fromList [("a",2)])]
+          (id)
+          (Map.fromList [("a",2)])
  
 
       it "test identity guided search case 1" $ do

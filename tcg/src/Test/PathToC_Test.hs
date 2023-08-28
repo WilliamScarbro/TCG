@@ -59,7 +59,9 @@ path2c_spec =
 
       test_suite "DirectMontyInMem"
 
+      test_suite "Vector"
       
+      test_suite "VectorMonty"
 
 test_forward_path_gen path =
   do
@@ -73,7 +75,7 @@ testForwardPath_gen path =
     start = path_get_start path
     prime = get_prime start
     size = get_size start
-    fname = "DirGen"
+    fname = "Gen"
     --ff = FField prime
     corMaybe =
       do -- Maybe

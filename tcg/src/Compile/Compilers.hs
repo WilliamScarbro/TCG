@@ -19,55 +19,65 @@ compiler_name = getEnv "COMPILER"
 compilePath :: Path -> IO String
 compilePath path =
   let
-    prime = get_prime (path_get_start path)
+    start = path_get_start path
+    prime = get_prime start
+    root_base = get_root start
   in
   do
     cname <- compiler_name
     join (maybeToIO ("COMPILER name invalid "++cname) (case cname of
-       "Direct" -> return ( compiler_direct prime compilePathToC_completeOpt path )
-       "DirectMonty" -> return ( compiler_direct_monty prime compilePathToC_completeOpt path )
-       "DirectMontyInMem"-> return ( compiler_direct_monty_inmem prime compilePathToC_completeOpt path )
+       "Direct" -> return ( compiler_direct prime root_base compilePathToC_completeOpt path )
+       "DirectMonty" -> return ( compiler_direct_monty prime root_base compilePathToC_completeOpt path )
+       "DirectMontyInMem"-> return ( compiler_direct_monty_inmem prime root_base compilePathToC_completeOpt path )
        "Fucntional" -> return (compiler_functional path)
+       "Vector" -> return (compiler_vector path)
+       "VectorMonty" -> return (compiler_vector_monty path)
        _ -> Nothing ))
 
 compileInversePath :: Path -> IO String
 compileInversePath path =
   let
-    prime = get_prime (path_get_start path)
+    start = path_get_start path
+    prime = get_prime start
+    root_base = get_root start
   in
   do
     cname <- compiler_name
     join (maybeToIO ("COMPILER name "++cname++" undefined for compileInversePath") (case cname of
-       "Direct" -> return ( compiler_direct prime compileInversePathToC_completeOpt path )
-       "DirectMonty" -> return ( compiler_direct_monty prime compileInversePathToC_completeOpt path )
-       "DirectMontyInMem"-> return ( compiler_direct_monty_inmem prime compileInversePathToC_completeOpt path )
+       "Direct" -> return ( compiler_direct prime root_base compileInversePathToC_completeOpt path )
+       "DirectMonty" -> return ( compiler_direct_monty prime root_base compileInversePathToC_completeOpt path )
+       "DirectMontyInMem"-> return ( compiler_direct_monty_inmem prime root_base compileInversePathToC_completeOpt path )
        --"Fucntional" -> return (compiler_functional path)
        _ -> Nothing ))
       
 compileMultiplyPath :: Path -> IO String
 compileMultiplyPath path =
   let
-    prime = get_prime (path_get_start path)
+    start = path_get_start path
+    prime = get_prime start
+    root_base = get_root start 
   in
   do
     cname <- compiler_name
     join (maybeToIO ("COMPILER name "++cname++" undefined for compileMultiplyPath") (case cname of
-       "Direct" -> return ( compiler_direct_multiply prime compileMultiplyPathToC_completeOpt path )
-       "DirectMonty" -> return ( compiler_direct_multiply_monty prime compileMultiplyPathToC_completeOpt path )
-       "DirectMontyInMem" -> return ( compiler_direct_multiply_monty_inmem prime compileMultiplyPathToC_completeOpt path )
+       "Direct" -> return ( compiler_direct_multiply prime root_base compileMultiplyPathToC_completeOpt path )
+       "DirectMonty" -> return ( compiler_direct_multiply_monty prime root_base compileMultiplyPathToC_completeOpt path )
+       "DirectMontyInMem" -> return ( compiler_direct_multiply_monty_inmem prime root_base compileMultiplyPathToC_completeOpt path )
        _ -> Nothing ))
 
 compileIdentityPath :: Path -> IO String
 compileIdentityPath path =
   let
-    prime = get_prime (path_get_start path)
+    start = path_get_start path
+    prime = get_prime start
+    root_base = get_root start 
   in
   do
     cname <- compiler_name
     join (maybeToIO ("COMPILER name "++cname++" undefined for compileIdentityPath") (case cname of
-       "Direct" -> return ( compiler_direct_identity prime compileMultiplyPathToC_completeOpt path )
-       "DirectMonty" -> return ( compiler_direct_identity_monty prime compileMultiplyPathToC_completeOpt path )
-       "DirectMontyInMem" -> return ( compiler_direct_identity_monty_inmem prime compileMultiplyPathToC_completeOpt path )
+       "Direct" -> return ( compiler_direct_identity prime root_base compileMultiplyPathToC_completeOpt path )
+       "DirectMonty" -> return ( compiler_direct_identity_monty prime root_base compileMultiplyPathToC_completeOpt path )
+       "DirectMontyInMem" -> return ( compiler_direct_identity_monty_inmem prime root_base compileMultiplyPathToC_completeOpt path )
        _ -> Nothing ))
 
 -- compileInversePath :: Path -> IO String
@@ -116,28 +126,29 @@ compileIdentityPath path =
 --     cfunc path
           
 
-compiler_direct :: Int -> (FField -> LOClassCompileFunc FField -> PruneFAST FField -> BoilerPlateFunc -> Path -> IO String) -> Path -> IO String
-compiler_direct prime compile_func path =
+compiler_direct :: Int -> Int -> (FField -> LOClassCompileFunc FField -> PruneFAST FField -> BoilerPlateFunc -> Path -> IO String) -> Path -> IO String
+compiler_direct prime root_base compile_func path =
   compile_func
-    (FField prime)
+    (ffield_init prime root_base)
     compileLOPSToFieldAST
     pruneFast
     add_boiler_plate
     path
 
-compiler_direct_multiply :: Int -> (FField -> LOClassCompileFunc FField -> PruneFAST FField -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
-compiler_direct_multiply prime compile_func path =
+compiler_direct_multiply :: Int -> Int -> (FField -> LOClassCompileFunc FField -> PruneFAST FField -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
+compiler_direct_multiply prime root_base compile_func path =
   compile_func
-    (FField prime)
+    (ffield_init prime root_base)
     compileLOPSToFieldAST
     pruneFast
     add_boiler_plate_multiply
     path
 
-compiler_direct_multiply_monty :: Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
-compiler_direct_multiply_monty prime compile_func path =
-  do
-    monty <- maybeToIO "failed_monty init" (monty_init prime)
+compiler_direct_multiply_monty :: Int -> Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
+compiler_direct_multiply_monty prime root_base compile_func path =
+  let
+    monty = monty_init prime root_base
+  in
     compile_func
       monty
       compileLOPSToFieldAST
@@ -145,10 +156,11 @@ compiler_direct_multiply_monty prime compile_func path =
       add_boiler_plate_multiply_monty
       path
 
-compiler_direct_multiply_monty_inmem :: Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
-compiler_direct_multiply_monty_inmem prime compile_func path =
-  do
-    monty <- maybeToIO "failed_monty init" (monty_init prime)
+compiler_direct_multiply_monty_inmem :: Int -> Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
+compiler_direct_multiply_monty_inmem prime root_base compile_func path =
+  let
+    monty = monty_init prime root_base
+  in
     compile_func
       monty
       compileLOPSToFieldAST_inMem
@@ -156,19 +168,20 @@ compiler_direct_multiply_monty_inmem prime compile_func path =
       add_boiler_plate_multiply_monty
       path
 
-compiler_direct_identity :: Int -> (FField -> LOClassCompileFunc FField -> PruneFAST FField -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
-compiler_direct_identity prime compile_func path =
+compiler_direct_identity :: Int -> Int -> (FField -> LOClassCompileFunc FField -> PruneFAST FField -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
+compiler_direct_identity prime root_base compile_func path =
   compile_func
-    (FField prime)
+    (ffield_init prime root_base)
     compileLOPSToFieldAST
     pruneFast
     add_boiler_plate_identity
     path
 
-compiler_direct_identity_monty :: Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
-compiler_direct_identity_monty prime compile_func path =
-  do
-    monty <- maybeToIO "failed monty_init" (monty_init prime)
+compiler_direct_identity_monty :: Int -> Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
+compiler_direct_identity_monty prime root_base compile_func path =
+  let
+    monty = monty_init prime root_base
+  in
     compile_func
       monty
       compileLOPSToFieldAST
@@ -177,10 +190,11 @@ compiler_direct_identity_monty prime compile_func path =
       path
 
 
-compiler_direct_identity_monty_inmem :: Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
-compiler_direct_identity_monty_inmem prime compile_func path =
-  do
-    monty <- maybeToIO "failed monty_init" (monty_init prime)
+compiler_direct_identity_monty_inmem :: Int -> Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> MultiplyBoilerPlateFunc -> Path -> IO String) -> Path -> IO String
+compiler_direct_identity_monty_inmem prime root_base compile_func path =
+  let
+    monty = monty_init prime root_base
+  in
     compile_func
       monty
       compileLOPSToFieldAST_inMem
@@ -188,10 +202,11 @@ compiler_direct_identity_monty_inmem prime compile_func path =
       add_boiler_plate_identity_monty
       path
 
-compiler_direct_monty :: Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> BoilerPlateFunc -> Path -> IO String) -> Path -> IO String
-compiler_direct_monty prime compile_func path =
-  do
-    monty <- maybeToIO "failed monty_init" (monty_init prime)
+compiler_direct_monty :: Int -> Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> BoilerPlateFunc -> Path -> IO String) -> Path -> IO String
+compiler_direct_monty prime root_base compile_func path =
+  let
+    monty = monty_init prime root_base 
+  in
     compile_func
       monty
       compileLOPSToFieldAST
@@ -199,10 +214,11 @@ compiler_direct_monty prime compile_func path =
       add_boiler_plate_monty
       path
 
-compiler_direct_monty_inmem :: Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> BoilerPlateFunc -> Path -> IO String) -> Path -> IO String
-compiler_direct_monty_inmem prime compile_func path =
-  do
-    monty <- maybeToIO "failed monty_init" (monty_init prime)
+compiler_direct_monty_inmem :: Int -> Int -> (Monty -> LOClassCompileFunc Monty -> PruneFAST Monty -> BoilerPlateFunc -> Path -> IO String) -> Path -> IO String
+compiler_direct_monty_inmem prime root_base compile_func path =
+  let
+    monty = monty_init prime root_base
+  in
     compile_func
       monty
       compileLOPSToFieldAST_inMem
@@ -213,6 +229,25 @@ compiler_direct_monty_inmem prime compile_func path =
 compiler_functional :: Path -> IO String
 compiler_functional = compilePathToFunc
 
+compiler_vector :: Path -> IO String
+compiler_vector path =
+  let
+    start = path_get_start path
+    prime = get_prime start
+    root_base = get_root start
+    field = ffield_init prime root_base
+  in
+    compilePathToC_Vectorized field (vectorBoilerPlate field) path
+
+compiler_vector_monty :: Path -> IO String
+compiler_vector_monty path =
+  let
+    start = path_get_start path
+    prime = get_prime start
+    root_base = get_root start
+    monty = monty_init prime root_base
+  in
+    compilePathToC_Vectorized monty (vectorBoilerPlate_Monty monty) path
 --
 
 timePath :: Path -> String -> IO Float

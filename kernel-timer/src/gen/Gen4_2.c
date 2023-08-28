@@ -3,22 +3,63 @@
 #include "../Util.h"
 #include "../timer.h"
 #include "../Monty.h"
+#include "../Generic.h"
 
-void gen(int* X,int* Y,monty_str* monty){
-    int t0;
-    int t1;
-    int t2;
-    int t3;
-    t0 = (X[0] + (X[1] + (X[2] + X[3])));
-    t1 = (X[0] + (REDC(monty,(1 * X[1])) + (REDC(monty,(4 * X[3])) - X[2])));
-    t2 = (X[0] + ((X[2] - X[3]) - X[1]));
-    t3 = (X[0] + (REDC(monty,(4 * X[1])) + (REDC(monty,(1 * X[3])) - X[2])));
-    Y[0] = t0;
-    Y[1] = t1;
-    Y[2] = t2;
-    Y[3] = t3;
+void init_pcc(int*** pccList_pointer, int**** pccMap_pointer){
+  int pcc0[4] = { 1,1,1,4 };
+  int pcc1[4] = { 1,2,1,3 };  
+    // should not be static
+  
 
+  int* dypcc0 = allocate(4,pcc0);
+  int* dypcc1 = allocate(4096,pcc1);
+
+  *pccList_pointer = (int **)malloc(2*sizeof(int*));
+    int** pccList=*pccList_pointer;
+    pccList[0] = dypcc0;
+    pccList[1] = dypcc1;
+    
+    int** pccMap0 = (int**)malloc(1*sizeof(int*));
+    pccMap0[0]=pccList[0];
+
+    int** pccMap1 = (int**)malloc(2*sizeof(int*));
+    pccMap1[0]=pccList[0];
+    pccMap1[1]=pccList[1];
+    
+    *pccMap_pointer = (int***)malloc(2*sizeof(int**));
+    int*** pccMap=*pccMap_pointer;
+    pccMap[0]=pccMap0;
+    pccMap[1]=pccMap1;
+    
 }
+
+void dest_pcc(int** pccList, int*** pccMap){
+  for (int i=0; i<2; i++){
+    free(pccList[i]);
+  }
+  /* printf("pccMap at dest %p\n",(void *)pccMap); */
+  /* printf("pccList at dest %p\n",(void *)pccList); */
+
+
+  /* printf("pccMap0 at dest %p\n",(void *)pccMap[0]); */
+  /* printf("pccMap1 at dest %p\n",(void *)pccMap[1]); */
+    
+  for (int i=0; i<2; i++){
+    free(pccMap[i]);
+  }
+  free(pccList);
+  free(pccMap);
+}
+
+// probably doesnt need pccList
+void gen(int* X,int* Y,int*** pccMap){
+  for (int i=0; i<1; i++)
+    itensor(5,2,2,X,Y,pccMap[0][i]);
+
+  for (int i=0; i<2; i++)
+    square(5,2,X+2*i,Y+2*i,pccMap[1][i]);
+}
+
 
 int main(int argc,char** argv){
     int* X = malloc(sizeof(int)*4);
@@ -27,30 +68,27 @@ int main(int argc,char** argv){
     for(int i=0; i<4; i++){
       X[i]=i;
     }
-    
-    monty_str monty;
-    monty_init(&monty,5,8,3,2,3);
-    for(int i=0; i<4; i++){
-      toResidue(&monty,X[i]);
-    }
+
+    int** pccList;
+    int*** pccMap;
+    init_pcc(&pccList,&pccMap);
+
     
     initialize_timer();
     start_timer();
     
-    gen(X,Y,&monty);
+    gen(X,Y,pccMap);
     
     stop_timer();
     printf("Elapsed time: %f\n",elapsed_time());
-    
-    for(int i=0; i<4; i++){
-      fromResidue(&monty,Y[i]);
-    }
-    
+        
     for(int i=0; i<4; i++){
       Y[i]=(((Y[i]+5)%5)+5)%5;
     }
     
     print_array("result",Y,4);
+
+    dest_pcc(pccList,pccMap);
     
     free(X);
     free(Y);

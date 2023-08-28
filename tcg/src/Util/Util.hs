@@ -2,6 +2,7 @@ module Util.Util where
 
 import Util.Logger
 import System.Random
+import Data.Time
 
 maybeToIO :: String -> Maybe a -> IO a
 maybeToIO _ (Just m_obj) = return m_obj

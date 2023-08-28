@@ -6,19 +6,22 @@ import Compile.LOClasses
 import Compile.KernelToFieldAST
 import Algebra.NTT
 import Algebra.FField
+import qualified Algebra.BetterAlgebra as BA
 import Util.Util
 import Search.Search
 import Algebra.PolyRings
 import Compile.Monty
 import Compile.OptimizeIR
+import Compile.KernelToVectorFAST
 import Util.Logger
 
 type KernelOptFunc = [Kernel] -> [Kernel]
 type LOClassOptFunc = [LOClass] -> [LOClass]
 type LOClassCompileFunc a = Int -> [LOClass] -> a -> PruneFAST a -> IO CProgram
 type PruneFAST a = a -> FieldAST a -> FieldAST a
-type BoilerPlateFunc = (CProgram -> Int -> Int -> Maybe String)
-type MultiplyBoilerPlateFunc = (CProgram -> CProgram -> Int -> Int -> Maybe String)
+type BoilerPlateFunc = (CProgram -> Int -> Int -> Int -> Maybe String)
+type MultiplyBoilerPlateFunc = (CProgram -> CProgram -> Int -> Int -> Int -> Maybe String)
+
 
 
 
@@ -82,10 +85,11 @@ compilePathToC field kernel_opt lo_opt compile_func prune_func boiler_plate_func
     start = path_get_start path
     size = get_size start
     prime = get_prime start
+    root_base = get_root start
   in
     do -- IO
       kers <- maybeToIO "Path2C: failed path_get_steps" (path_get_steps path)
-      compileKernelsToC field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime kers
+      compileKernelsToC field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime root_base kers
 
 
 compileMultiplyPathToC :: Field a =>
@@ -102,11 +106,12 @@ compileMultiplyPathToC field kernel_opt lo_opt compile_func prune_func boiler_pl
     start = path_get_start path
     size = get_size start
     prime = get_prime start
+    root_base = get_root start
   in
     do
       forward_kers <- maybeToIO "Path2C: failed path_get_steps" (path_get_steps path)
       inverse_kers <- maybeToIO "Path2C: failed path_get_inverse_steps" (path_get_inverse_steps path)
-      compileKernelsToC_Multiply field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime forward_kers inverse_kers
+      compileKernelsToC_Multiply field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime root_base forward_kers inverse_kers
 
 compileInversePathToC :: Field a =>
   a ->
@@ -122,10 +127,11 @@ compileInversePathToC field kernel_opt lo_opt compile_func prune_func boiler_pla
     start = path_get_start path
     size = get_size start
     prime = get_prime start
+    root_base = get_root start
   in
     do -- IO
       kers <- maybeToIO "InvPath2C: failed path_get_inv_steps" (path_get_inverse_steps path)
-      compileKernelsToC field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime kers
+      compileKernelsToC field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime root_base kers
 
 
 compileKernelsToC :: Field a =>
@@ -137,15 +143,17 @@ compileKernelsToC :: Field a =>
   BoilerPlateFunc ->
   Int -> --size
   Int -> --prime
+  Int -> --root
   [Kernel] ->
   IO String
-compileKernelsToC field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime kers =
+compileKernelsToC field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime root_base kers =
     do -- IO
       opt_kers <- return . kernel_opt $ kers
-      lops <- maybeToIO "Path2C: Failed kernelToLO" (sequence (fmap kernelToLOC opt_kers))
+      let mpm = field_get_mpm field
+      lops <- maybeToIO "Path2C: Failed kernelToLO" (sequence (fmap (kernelToLOC mpm) opt_kers))
       opt_lops <- return (lo_opt lops)
       program <- compile_func size opt_lops field prune_func
-      code <- maybeToIO "Failed adding boiler plate" (boiler_plate_func program size prime)
+      code <- maybeToIO "Failed adding boiler plate" (boiler_plate_func program size prime root_base)
       return code
 
 compileKernelsToC_Multiply :: Field a =>
@@ -157,21 +165,23 @@ compileKernelsToC_Multiply :: Field a =>
   MultiplyBoilerPlateFunc ->
   Int -> --size
   Int -> --prime
+  Int -> --root base
   [Kernel] ->
   [Kernel] ->
   IO String
-compileKernelsToC_Multiply field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime forward_kers inverse_kers =
+compileKernelsToC_Multiply field kernel_opt lo_opt compile_func prune_func boiler_plate_func size prime root_base forward_kers inverse_kers =
     do -- IO
+      let mpm = field_get_mpm field
       forward_opt_kers <- return . kernel_opt $ forward_kers
       inverse_opt_kers <- return . reverse . kernel_opt $ inverse_kers
-      forward_lops <- maybeToIO "Path2C: Failed kernelToLO (foward)" (sequence (fmap kernelToLOC forward_opt_kers))
-      inverse_lops <- maybeToIO "Path2C: Failed kernelToLO (inverse)" (sequence (fmap kernelToLOC inverse_opt_kers))
+      forward_lops <- maybeToIO "Path2C: Failed kernelToLO (foward)" (sequence (fmap (kernelToLOC mpm) forward_opt_kers))
+      inverse_lops <- maybeToIO "Path2C: Failed kernelToLO (inverse)" (sequence (fmap (kernelToLOC mpm) inverse_opt_kers))
       forward_opt_lops <- return (lo_opt forward_lops)
       inverse_opt_lops <- return (lo_opt inverse_lops)
       forward_program <- compile_func size forward_opt_lops field prune_func
       inverse_program <- compile_func size inverse_opt_lops field prune_func
      
-      code <- maybeToIO "Failed adding boiler plate" (boiler_plate_func forward_program inverse_program size prime)
+      code <- maybeToIO "Failed adding boiler plate" (boiler_plate_func forward_program inverse_program size prime root_base)
       return code
 
 
@@ -362,7 +372,7 @@ monty_scale_from vars size =
 
 
 add_boiler_plate :: BoilerPlateFunc -- CProgram -> Int -> Int -> Maybe String
-add_boiler_plate cp size prime =
+add_boiler_plate cp size prime _ =
   let
     body = translateCToStr cp
     op_count = countOperations cp
@@ -379,7 +389,7 @@ add_boiler_plate cp size prime =
   Just code
            
 add_boiler_plate_multiply :: MultiplyBoilerPlateFunc -- CProgram -> CProgram -> Int -> Int -> Maybe String
-add_boiler_plate_multiply forward_cp inverse_cp size prime =
+add_boiler_plate_multiply forward_cp inverse_cp size prime _ =
   let
     forward_body = translateCToStr forward_cp
     inverse_body = translateCToStr inverse_cp
@@ -399,7 +409,7 @@ add_boiler_plate_multiply forward_cp inverse_cp size prime =
     Just code
 
 add_boiler_plate_identity :: MultiplyBoilerPlateFunc
-add_boiler_plate_identity forward_cp inverse_cp size prime =
+add_boiler_plate_identity forward_cp inverse_cp size prime _ =
   let
     forward_body = translateCToStr forward_cp
     inverse_body = translateCToStr inverse_cp
@@ -422,14 +432,14 @@ add_boiler_plate_identity forward_cp inverse_cp size prime =
 
 
 add_boiler_plate_monty :: BoilerPlateFunc -- CProgram -> Int -> Int -> Maybe String
-add_boiler_plate_monty cp size prime =
+add_boiler_plate_monty cp size prime root_base =
   let
     body = translateCToStr cp
     op_count = countOperations cp
     call_gen_monty = "gen(X,Y,&monty);"
+    monty = monty_init prime root_base
   in
   do --Maybe
-    monty <- monty_init prime
     main <- return (main_function (allocate ["X","Y"] size++
                                    data_init ["X"] size++
                                    monty_init_struct monty++
@@ -447,15 +457,15 @@ add_boiler_plate_monty cp size prime =
     return code
 
 add_boiler_plate_multiply_monty :: MultiplyBoilerPlateFunc
-add_boiler_plate_multiply_monty forward_cp inverse_cp size prime =
+add_boiler_plate_multiply_monty forward_cp inverse_cp size prime root_base =
   let
     forward_body = translateCToStr forward_cp
     inverse_body = translateCToStr inverse_cp
+    monty = monty_init prime root_base
     call_mult_monty = "polymult(X,X_t,Y,Y_t,Z,Z_t,&monty);"
     all_vars = ["X","Y","Z","X_t","Y_t","Z_t"]
   in
   do
-    monty <- monty_init prime
     main <- return (main_function (allocate all_vars size++
                                    data_init ["X","Y"] size++
                                    monty_init_struct monty++
@@ -474,15 +484,15 @@ add_boiler_plate_multiply_monty forward_cp inverse_cp size prime =
     return code
 
 add_boiler_plate_identity_monty :: MultiplyBoilerPlateFunc
-add_boiler_plate_identity_monty forward_cp inverse_cp size prime =
+add_boiler_plate_identity_monty forward_cp inverse_cp size prime root_base =
   let
     forward_body = translateCToStr forward_cp
     inverse_body = translateCToStr inverse_cp
+    monty = monty_init prime root_base
     call_identity_monty = "identity(X,Y,Z,&monty);"
     all_vars = ["X","Y","Z"]
   in
   do
-    monty <- monty_init prime
     main <- return (main_function (allocate all_vars size++
                                    data_init ["X"] size++
                                    monty_init_struct monty++
@@ -507,3 +517,114 @@ concat_lines indent lines = let
 
 whitespace length = foldr (++) "" [" "|i<-[0..length-1]] 
 
+--
+
+type VectorBoilerPlate = [String] -> [CStatement] -> [String] -> Int -> Int -> String
+
+vectorBoilerPlate :: FField -> VectorBoilerPlate
+vectorBoilerPlate ffield pccInit vectorCAST pccDestroy size prime =
+  let
+    all_vars = ["X","Y"]
+    
+    init_func = ["void init_pcc(int*** pccList_pointer, int**** pccMap_pointer){",
+                 concat_lines 2 pccInit,
+                 "}"]
+    destroy_func = ["void dest_pcc(int** pccList,int*** pccMap){",
+                   concat_lines 2 pccDestroy,
+                   "}"]
+    gen_func = ["void gen(int* X,int* Y,int*** pccMap){",
+               concat_lines 2 (translateCToStr (CProgram vectorCAST)),
+               "}"]
+    gen_func_monty = ["void gen(int* X,int* Y,int*** pccMap,monty_str* monty){",
+               concat_lines 2 (translateCToStr (CProgram vectorCAST)),
+               "}"]
+
+    call_init_pcc = ["int** pccList;",
+                "int*** pccMap;",
+                "init_pcc(&pccList,&pccMap);",
+                ""]
+    call_gen = ["gen(X,Y,pccMap);",""]
+    call_gen_monty = ["gen(X,Y,pccMap,monty);",""]
+    
+    call_destroy_pcc = ["dest_pcc(pccList,pccMap);",""]
+
+    
+    main_func = main_function (allocate all_vars size++
+                               data_init ["X"] size++
+                               call_init_pcc++
+                               time_func call_gen++
+                               fold_result "Y" size prime++
+                               print_result "Y" size++
+                               call_destroy_pcc++
+                               free_data all_vars)
+
+
+
+    code = concat_lines 0 (includes ["../Generic.h","../LPerm.h"]++
+                           init_func++
+                           destroy_func++
+                           gen_func++
+                           main_func )
+           
+    
+  in
+    code
+                   
+vectorBoilerPlate_Monty :: Monty -> VectorBoilerPlate
+vectorBoilerPlate_Monty monty pccInit vectorCAST pccDestroy size prime =
+  let
+    all_vars = ["X","Y"]
+    
+    init_func = ["void init_pcc(int*** pccList_pointer, int**** pccMap_pointer){",
+                 concat_lines 2 pccInit,
+                 "}"]
+    destroy_func = ["void dest_pcc(int** pccList,int*** pccMap){",
+                   concat_lines 2 pccDestroy,
+                   "}"]
+    gen_func_monty = ["void gen(int* X,int* Y,int*** pccMap,monty_str* monty){",
+                      concat_lines 2 (translateCToStr (CProgram vectorCAST)),
+                      "}"]
+
+    call_init_pcc = ["int** pccList;",
+                     "int*** pccMap;",
+                     "init_pcc(&pccList,&pccMap);",
+                     ""]
+
+    call_gen_monty = ["gen(X,Y,pccMap,&monty);",""]
+    
+    call_destroy_pcc = ["dest_pcc(pccList,pccMap);",""]
+
+    main_func_monty = main_function (allocate all_vars size++
+                                     data_init ["X"] size++
+                                     call_init_pcc++
+                                     monty_init_struct monty++
+                                     time_func (monty_scale_to ["X"] size++
+                                                call_gen_monty++
+                                                monty_scale_from ["Y"] size)++
+                                     fold_result "Y" size prime++
+                                     print_result "Y" size++
+                                     call_destroy_pcc++
+                                     free_data all_vars)
+    code_monty = concat_lines 0 (includes ["../Generic.h","../LPerm.h"]++
+                                 init_func++
+                                 destroy_func++
+                                 gen_func_monty++
+                                 main_func_monty)
+  in
+    code_monty
+
+compilePathToC_Vectorized :: Field a => a -> VectorBoilerPlate -> Path -> IO String
+compilePathToC_Vectorized field boiler_plate path =
+  let
+    start = path_get_start path
+    size = get_size start
+    prime = get_prime start
+    root_base = get_root start
+    mpm = BA.init_ModPrimeMemo prime root_base
+  in
+    maybeToIO "Path2C vectorized: compile failed" $ do
+      kernels <- path_get_steps path
+      let notid_kernels = remove_identity_kernels kernels
+      vectorClasses <- sequence (fmap (kernelToVectorClass mpm) notid_kernels)
+      (pccInit,vectorCAST,pccDestroy) <- compileVectorClasses field size vectorClasses
+      return $ boiler_plate pccInit vectorCAST pccDestroy size prime

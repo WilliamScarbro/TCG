@@ -4,6 +4,7 @@ module Compile.FAST where
 
 import Compile.CAST
 import Compile.Monty
+import qualified Algebra.BetterAlgebra as BA
 
 import Data.List
 
@@ -198,33 +199,50 @@ class Field a where
   neg :: a -> CExpr -> CExpr
   get_type :: a -> CType
   is_neg_one :: a -> FieldExpr a -> Bool
+  to_int :: a -> Int -> Int
   fieldElFromInt :: a -> Int -> CExpr
- 
+  diagonal_func :: a -> [CExpr] -> CStatement
+  square_func :: a -> [CExpr] -> CStatement
+  itensor_func :: a -> [CExpr] -> CStatement
+  field_get_mpm :: a -> BA.ModPrimeMemo
 
-data FField = FField Int
+data FField = FField Int BA.ModPrimeMemo
 
+ffield_init :: Int -> Int -> FField
+ffield_init prime root_base = FField prime (BA.init_ModPrimeMemo prime root_base)
+  
 instance Field FField where
-  add (FField p) e1 e2 = CBinaryOp CModulo (CBinaryOp CAdd e1 e2) (Literal (IntLiteral p))
-  sub (FField p) e1 e2 = CBinaryOp CModulo (CBinaryOp CSubtract e1 e2) (Literal (IntLiteral p))
-  mult (FField p) e1 e2 = CBinaryOp CModulo (CBinaryOp CMultiply e1 e2) (Literal (IntLiteral p))
-  divide (FField p) e1 e2 = CBinaryOp CModulo (CBinaryOp CDivide e1 e2) (Literal (IntLiteral p)) --
-  neg (FField p) e = CUnaryOp CNegate e
-  get_type (FField p) = CInt
-  is_neg_one (FField p) (Constant c) = mod c p == p-1
+  add (FField p _) e1 e2 = CBinaryOp CModulo (CBinaryOp CAdd e1 e2) (Literal (IntLiteral p))
+  sub (FField p _) e1 e2 = CBinaryOp CModulo (CBinaryOp CSubtract e1 e2) (Literal (IntLiteral p))
+  mult (FField p _) e1 e2 = CBinaryOp CModulo (CBinaryOp CMultiply e1 e2) (Literal (IntLiteral p))
+  divide (FField p _) e1 e2 = CBinaryOp CModulo (CBinaryOp CDivide e1 e2) (Literal (IntLiteral p)) --
+  neg (FField p _) e = CUnaryOp CNegate e
+  get_type (FField p _) = CInt
+  is_neg_one (FField p _) (Constant c) = mod c p == p-1
   is_neg_one ff _ = False
+  to_int ff c = c
   fieldElFromInt ff c = Literal (IntLiteral c)
+  diagonal_func (FField p _) add_args = CFuncStmt "diagonal" $ (Literal (IntLiteral p)):add_args
+  square_func (FField p _) add_args = CFuncStmt "square" $ (Literal (IntLiteral p)):add_args
+  itensor_func (FField p _) add_args = CFuncStmt "itensor" $ (Literal (IntLiteral p)):add_args
+  field_get_mpm (FField _ mpm) = mpm
   
 instance Field Monty where
   add monty e1 e2 = CBinaryOp CAdd e1 e2
   sub monty e1 e2 = CBinaryOp CSubtract e1 e2
-  mult monty e1 e2 = CFunc "REDC" [Identifier "monty",CBinaryOp CMultiply e1 e2] -- we assume there is a struct "monty" which has the necessary values
-  divide monty e1 e2 = CFunc "NotImplemented" []
+  mult monty e1 e2 = CFuncExpr "REDC" [Identifier "monty",CBinaryOp CMultiply e1 e2] -- we assume there is a struct "monty" which has the necessary values
+  divide monty e1 e2 = CFuncExpr "NotImplemented" []
   neg monty e = CUnaryOp CNegate e
   get_type monty = CInt
   is_neg_one monty (Constant c) = mod c (p monty) == (p monty)-1
   is_neg_one monty _ = False
+  to_int monty c = int2Residue monty c
   fieldElFromInt monty c = Literal (IntLiteral (int2Residue monty c))
-  
+  diagonal_func _  add_args = CFuncStmt "diagonal_monty" $ (Identifier "monty"):add_args
+  square_func _ add_args = CFuncStmt "square_monty" $ (Identifier "monty"):add_args
+  itensor_func _ add_args = CFuncStmt "itensor_monty" $ (Identifier "monty"):add_args
+  field_get_mpm monty = monty_mpm monty
+
 translateFieldToC :: Field a => a -> FieldAST a -> CProgram
 translateFieldToC field (FieldAST stmts) =
   let assigns = (fmap (translateFieldStmt field) stmts) in

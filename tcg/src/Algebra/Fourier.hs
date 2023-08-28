@@ -265,7 +265,7 @@ morphism_to_kernel Define r = Nothing
 morphism_to_kernel SwapQQ (Quo n0 k 0 (Quo n1 1 d r)) = Just (Gamma k n1 d (get_root r) (get_prime r))
 morphism_to_kernel SwapQQ _ = Nothing
 
-morphism_to_kernel SwapQP (Quo n0 k0 d0 (Prod n1 k1 f)) = Just (KT k0 k1 (div n1 k1))
+morphism_to_kernel SwapQP (Quo n0 k0 d0 (Prod n1 k1 f)) = Just (KT k1 k0 (div n1 k1))
 --morphism_to_kernel SwapPQ (Prod n0 k0 f) =
 --  do
 --    ring <- f 0
@@ -285,7 +285,7 @@ morphism_to_kernel SwapJoinProd (Prod n0 k0 f0) =
   do
     prod <- f0 0
     (n1,k1,f1) <- prod_get_data prod
-    return (KT k0 k1 (div n1 k1))
+    return (KT k1 k0 (div n1 k1))
 morphism_to_kernel SwapJoinProd _ = Nothing
 
 morphism_to_kernel (Repeat k0 m) (Quo n k1 d r) = if k0 == k1 then (morphism_to_kernel m r) >>= (\lo -> Just (Kernel_Repeat n k0 lo)) else Nothing

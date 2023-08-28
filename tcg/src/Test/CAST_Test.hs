@@ -19,7 +19,7 @@ cast_spec = do
   describe "translateStmt" $ do
     it "translates an assignment statement to a string" $
       translateStmt 0 (CAssignment "x" (Literal (IntLiteral 42)))
-        `shouldBe` "x = 42;"
+        `shouldBe` ["x = 42;"]
 
   describe "translateExpr" $ do
     it "translates an integer literal to a string" $

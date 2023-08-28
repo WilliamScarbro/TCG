@@ -20,7 +20,7 @@ fast_spec = do
 
   describe "translateFieldToC" $ do
     it "translates a FieldAST to a CProgram" $ do
-      let field = FField 7
+      let field = ffield_init 7 6
           fexpr1 = Variable "x"
           fexpr2 = FieldOpExpr (FMultiply (Variable "y") (Constant 3))
           stmt1 = FieldAssignment "z" fexpr1
@@ -33,7 +33,7 @@ fast_spec = do
       translateFieldToC field ast `shouldBe` expected
 
   describe "translateFieldExpr" $ do
-    let field = FField 5
+    let field = ffield_init 5 4
     it "translates a Constant FieldExpr to a Literal" $ do
       translateFieldExpr field (Constant 42) `shouldBe` Literal (IntLiteral 42)
 
@@ -49,7 +49,7 @@ fast_spec = do
       translateFieldExpr field (FieldOpExpr fop) `shouldBe` expected
 
   describe "translateFieldStmt" $ do
-    let field = FField 11
+    let field = ffield_init 11 10
     it "translates a FieldAssignment to a CAssignment" $ do
       let fexpr = FieldOpExpr (FAdd (Variable "x") (Constant 1))
           stmt = FieldAssignment "y" fexpr
@@ -106,13 +106,13 @@ fast_spec = do
 
 ----
     it "should add negation to the multiplication expressions" $ do
-      let field = FField 3
+      let field = ffield_init 3 2
           fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FMultiply (Constant 2) (Variable "y")))]
           expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FNeg (Variable "y")))] 
       addNegation field fast `shouldBe` expectedAST
 
     it "should add negation to the multiplication expressions (reversed)" $ do
-      let field = FField 5
+      let field = ffield_init 5 4
           fast = FieldAST [FieldAssignment "x" (FieldOpExpr (FMultiply (Variable "y") (Constant 4)))]
           expectedAST = FieldAST [FieldAssignment "x" (FieldOpExpr (FNeg (Variable "y")))]
       addNegation field fast `shouldBe` expectedAST
@@ -151,7 +151,7 @@ fast_spec = do
 
 --
   it "real example for add negation" $ do
-    let field = FField 5
+    let field = ffield_init 5 4
         fast = FieldAST [FieldAssignment "t0" (FieldOpExpr (FAdd (Variable "X[0]") (Variable "X[2]"))),
                          FieldAssignment "t1" (FieldOpExpr (FAdd (Variable "X[0]") (FieldOpExpr (FMultiply (Constant 4) (Variable "X[2]"))))),
                          FieldAssignment "t2" (FieldOpExpr (FAdd (Variable "X[1]") (Variable "X[3]"))),

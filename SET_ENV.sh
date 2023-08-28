@@ -9,3 +9,4 @@ export TIMER_ITERS=100
 export MATCH_CONTEXT="Join"
 
 export COMPILER="DirectMonty"
+#export COMPILER="VectorMonty"

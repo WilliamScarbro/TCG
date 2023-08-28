@@ -27,8 +27,8 @@ expand_diagonal (Partition m los) =
   let
     all_diag = all id (fmap isDiag los)
     maybe_expanded = (do --Maybe
-      diag_func_list <- sequence (fmap get_diag_func los) :: Maybe [Int -> FF]
-      diag_func <-return (\i -> (diag_func_list !! (div i m)) (mod i m)) :: Maybe (Int -> FF)
+      diag_func_list <- sequence (fmap get_diag_func los) :: Maybe [Int -> Int]
+      diag_func <-return (\i -> (diag_func_list !! (div i m)) (mod i m)) :: Maybe (Int -> Int)
       if all_diag then
         Just (Diagonal (m*(length los)) diag_func)
       else

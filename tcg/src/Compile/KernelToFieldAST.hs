@@ -22,8 +22,8 @@ compileLOCToFieldAST (fromVars,toVars) (Diagonal n f) =
     maybeToIO "failed Diagonal Compilation" (compileLOCHelp toVars n diagonal_expr)
   where
     diagonal_expr i = do { -- Maybe
-      val <- f i >>= return . fromIntegral . get_rep;
-      return (FieldOpExpr (FMultiply (Constant val) (Variable (fromVars !! i)))); }
+      --val <- f i >>= return . fromIntegral . get_rep;
+      return (FieldOpExpr (FMultiply (Constant (f i)) (Variable (fromVars !! i)))); }
 
 compileLOCToFieldAST (fromVars,toVars) (Permutation n f) =
   if not (_check_dims fromVars toVars n) then
@@ -40,12 +40,14 @@ compileLOCToFieldAST (fromVars,toVars) (Square n f) =
     maybeToIO "failed Square Compilation" (compileLOCHelp toVars n square_expr)
   where
     square_expr :: Int -> Maybe (FieldExpr a)
-    square_expr i = do { -- Maybe
-      mult_exprs <- getExprs n i f fromVars; -- [FieldExpr a]
-      return (foldr (\x y -> FieldOpExpr (FAdd x y)) (Constant 0 :: FieldExpr a) mult_exprs); }
+    square_expr i =
+      let -- Maybe
+        mult_exprs = getExprs n i f fromVars -- [FieldExpr a]
+      in
+      return (foldr (\x y -> FieldOpExpr (FAdd x y)) (Constant 0 :: FieldExpr a) mult_exprs)
 
-    getExprs :: Int -> Int -> (Int -> Int -> FF) -> [String] -> Maybe [FieldExpr a]
-    getExprs n i f vars = sequence ( [ f i j >>= return . fromIntegral . get_rep >>= (\val -> return (FieldOpExpr (FMultiply (Constant val) (Variable (fromVars !! j))))) | j <- [0..n-1]] )
+    getExprs :: Int -> Int -> (Int -> Int -> Int) -> [String] -> [FieldExpr a]
+    getExprs n i f vars = ( [ (FieldOpExpr (FMultiply (Constant ( f i j )) (Variable (fromVars !! j)))) | j <- [0..n-1]] )
 
 compileLOCToFieldAST (fromVars,toVars) (Partition m lo_arr) =
   let

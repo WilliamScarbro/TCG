@@ -9,6 +9,7 @@ module Algebra.NTT where
 
 import Algebra.FField
 import Algebra.PolyRings
+import qualified Algebra.BetterAlgebra as BA
 
 import Data.Matrix
 
@@ -150,6 +151,19 @@ mNTT_inv n p =
     let n_inv=inv (Res (toInteger n) (toInteger p)) in
       (linearOp n (\(i,j) -> n_inv * (w_inv >>= (\x -> pow x (i*j)))))
 
+phi_func_memo :: BA.ModPrimeMemo -> Int -> Int -> Int -> Int -> Int -> Int
+phi_func_memo mpm n k d =
+  let
+    rd = mod d b
+    m = div n k
+    b = BA.n mpm
+  in
+    (\x y ->
+       if mod x m == mod y m then
+         BA.get_root_power mpm (div ((rd+(div x m)*b)*(div y m)) k)
+         else
+         0)
+  
 phi_func :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> FF
 phi_func n k d b p =
   let rd = mod d b 
@@ -163,6 +177,20 @@ phi :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
 phi n k d b p = let call=(\(i,j) -> phi_func n k d b p i j) in
   linearOp n call
 
+phi_inv_func_memo :: BA.ModPrimeMemo -> Int -> Int -> Int -> Int -> Int -> Int
+phi_inv_func_memo mpm n k d =
+  let
+    rd = mod d b
+    m = div n k
+    k_inv = BA.inverse mpm k
+    b = BA.n mpm
+  in
+    (\x y ->
+       if mod x m == mod y m then
+         BA.mult mpm k_inv (BA.get_root_power mpm (-(div ((rd+(div y m)*b)*(div x m)) k)))
+         else
+         0)
+      
 -- the position of x and y are reversed in comparison with the forward transform
 -- this is because in the equational representation the summation is over the z rather than the i variable
 phi_inv_func :: Int -> Int -> Int -> Int -> Int -> Int -> Int -> FF
@@ -186,6 +214,8 @@ phi_inv :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
 phi_inv n k d b p =
   linearOp n (\(i,j) -> (phi_inv_func n k d b p i j)) 
 
+gamma_func_memo :: BA.ModPrimeMemo -> Int -> Int -> Int -> Int -> Int
+gamma_func_memo mpm k m d x = BA.get_root_power mpm ((div d k)*(div x m))
 
 -- gamma
 -- extended by m to implement swapQQ
@@ -198,6 +228,9 @@ gamma :: Int -> Int -> Int -> Int -> Int -> LinearOp FF
 gamma k m d b p =
   let call = gamma_func k m d b p in
     linearOp (k*m) (\(x,y) -> if x==y then call x else 0)
+
+gamma_inv_func_memo :: BA.ModPrimeMemo -> Int -> Int -> Int -> Int -> Int
+gamma_inv_func_memo mpm k m d x = BA.get_root_power mpm (-(div d k)*(div x m))
 
 gamma_inv_func :: Int -> Int -> Int -> Int -> Int -> Int -> FF
 gamma_inv_func k m d b p x = do
@@ -258,6 +291,12 @@ sizeof (Kernel_Repeat n _ k) = n*(sizeof k)
 
 -- there are other kernels which reduce to identity, but we ignore that here
 isIdKer (KId _) = True
+isIdKer (Kernel_Repeat _ _ k) = isIdKer k
+isIdKer (Kernel_Extend _ k f) = all id [
+  case f i of
+    Just x -> isIdKer x
+    Nothing -> False
+  | i<-[0..k-1]]
 isIdKer _ = False
 
 --define_kernel :: Kernel -> Maybe LinearOp FF

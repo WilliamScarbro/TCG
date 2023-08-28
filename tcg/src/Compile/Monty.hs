@@ -1,27 +1,32 @@
 module Compile.Monty where
 
-data Monty = Monty { p :: Int, r :: Int, pPrime :: Int, rInv :: Int}
+import Algebra.BetterAlgebra
+
+data Monty = Monty { p :: Int, r :: Int, pPrime :: Int, rInv :: Int, monty_mpm :: ModPrimeMemo}
 
 instance Show Monty where
-  show (Monty p r pPrime rInv) = "Monty P:" ++ show p ++ " R:" ++ show r ++ " P':" ++ show pPrime ++ " R_inv:" ++ show rInv
+  show (Monty p r pPrime rInv _) = "Monty P:" ++ show p ++ " R:" ++ show r ++ " P':" ++ show pPrime ++ " R_inv:" ++ show rInv
 
 
-monty_init :: Int -> Maybe Monty
-monty_init p =
-  do
-    r <- return (2^((truncate ((log (fromIntegral p)) / (log 2))) + 1))
-    rInv <- findInverse r p
-    pPrime <- return (r*rInv `div` p)
-    return (Monty p r pPrime rInv)
-  where
-    findInverse :: Int -> Int -> Maybe Int
-    findInverse r p =
-      let
-        inverseList = filter (\i -> (r * i) `mod` p == 1) [0..p-1]
-      in
-        case inverseList of
-          [rInv] -> Just rInv
-          _ -> Nothing
+monty_init :: Int -> Int -> Monty
+monty_init p b =
+  let
+    r = (2^((truncate ((log (fromIntegral p)) / (log 2))) + 1))
+    mpm = init_ModPrimeMemo p b 
+    rInv = inverse mpm r
+    pPrime = r*rInv `div` p
+  in
+    Monty p r pPrime rInv mpm
+
+  -- where
+  --   findInverse :: Int -> Int -> Maybe Int
+  --   findInverse r p =
+  --     let
+  --       inverseList = filter (\i -> (r * i) `mod` p == 1) [0..p-1]
+  --     in
+  --       case inverseList of
+  --         [rInv] -> Just rInv
+  --         _ -> Nothing
 
 redc :: Monty -> Int -> Int
 redc monty t = let

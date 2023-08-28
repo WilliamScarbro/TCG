@@ -35,7 +35,6 @@ import Test.Util
 import Test.KernelToFieldAST_Test 
 import Correlation.TestSample
 import Correlation.RandomSample
-import Data.Time
 
 import qualified Data.Map as Map (empty,insert,Map,member)
 import Data.Tree
@@ -92,13 +91,6 @@ decompose_test log_n =
     writeFile ("results/decompose_"++show log_n) ((show only_times)++"\n"
                                                   ++(show (last . fmap fst $ path_times))++"\n"
                                                   ++"Time: "++show elapsedTime++"\n")
-timeCodeBlock :: IO a -> IO (a, NominalDiffTime)
-timeCodeBlock action = do
-    startTime <- getCurrentTime
-    result <- action
-    endTime <- getCurrentTime
-    let elapsedTime = diffUTCTime endTime startTime
-    return (result, elapsedTime)
 
 -- simulatedAnnealing :: forall a. AnnealingEnv a =>
 --   (a -> Path -> IO (a, [Path])) ->
@@ -133,8 +125,8 @@ equiv_lib_test elib log_n =
   in
   do
     passEnvVars
-    let path = (Path (Base n n (2*n) p) [Factor n])
-    --path <- seiler_path log_n
+    --let path = (Path (Base n n (2*n) p) [Factor n])
+    path <- seiler_path log_n
     ((history,best),elapsedTime) <- timeCodeBlock $ do
       simulatedAnnealing id_guided_expand_annealing (timeCodeString "Gen") compilePath (elib,10,100) path
     only_times <- return (fmap snd history)
@@ -149,7 +141,7 @@ main :: IO ()
 --  decompose_test 7
 
 --main = build_equiv_lib 10
-main = equiv_lib_test small_eq_lib 7
+main = equiv_lib_test small_eq_lib 8
 
   -- main = do
 --   sample <- random_sample_from_seiler 7 4

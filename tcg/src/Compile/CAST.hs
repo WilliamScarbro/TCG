@@ -6,6 +6,7 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Util.Util
 import Compile.Monty
+import Control.Monad (join)
 
 data CProgram = CProgram [CStatement] deriving (Eq,Show)
 
@@ -20,7 +21,9 @@ instance Eq (String -> [CStatement]) where
 data CStatement
   = CAssignment Identifier CExpr
   | CVarDeclare CType Identifier
-  | CLoop (Int,Int) (String -> [CStatement])
+  | CLoop (Int,Int) (String -> [CStatement]) -- start, end, index -> statements
+  | CFuncStmt Identifier [CExpr]
+
   deriving (Eq,Show)
   -- | If CExpr [tatement] (Maybe [Statement])
   -- | While CExpr [Statement]
@@ -31,7 +34,7 @@ data CExpr
   | CUnaryOp CUnaryOperator CExpr
   | Literal Literal
   | Identifier String
-  | CFunc Identifier [CExpr]
+  | CFuncExpr Identifier [CExpr]
   deriving (Eq,Show)
 
 data CBinaryOperator
@@ -82,19 +85,23 @@ _multiply_string str val = foldr (++) "" [str |i<-[0..val-1]]
 --
 
 translateCToStr :: CProgram -> [String]
-translateCToStr (CProgram stmts) = map (translateStmt 0) stmts
+translateCToStr (CProgram stmts) = join $ map (translateStmt 0) stmts
 
-translateStmt :: Int -> CStatement -> String
-translateStmt depth (CAssignment ident expr) = (_multiply_string " " depth) ++ ident ++ " = " ++ translateExpr expr ++ ";"
-translateStmt depth (CVarDeclare ctype ident) = (_multiply_string " " depth) ++ translateCType ctype ++ " " ++ ident ++ ";"
+translateStmt :: Int -> CStatement -> [String]
+translateStmt depth (CAssignment ident expr) = return $ (_multiply_string " " depth) ++ ident ++ " = " ++ translateExpr expr ++ ";"
+translateStmt depth (CVarDeclare ctype ident) = return $ (_multiply_string " " depth) ++ translateCType ctype ++ " " ++ ident ++ ";"
 translateStmt depth (CLoop (start,end) stmts_func) =
   let
     index_var = "i"++show depth
-    stmts = fmap (translateStmt (depth+1)) (stmts_func index_var)
+    stmts = join $ fmap (translateStmt 2) (stmts_func index_var)
+    for_stmts =
+      ["for (int "++index_var++"="++show start++"; "++index_var++"<"++show end++"; "++index_var++"++){"]++
+      stmts++
+      ["}"]
   in
-    (_multiply_string " " depth)++"for ("++index_var++"="++show start++"; "++index_var++"<"++show end++"; "++index_var++"++){"++
-    (foldr (++) "" stmts)++
-    "}"
+    fmap (\stmt -> (_multiply_string " " depth)++stmt) for_stmts
+    
+translateStmt depth (CFuncStmt name exprs) = return $ (_multiply_string " " depth) ++ name++"("++showStrTuple (fmap translateExpr exprs)++");"
     
 -- translate If, While, Return statements
 
@@ -119,7 +126,7 @@ translateExpr (CBinaryOp op left right) = "(" ++ translateExpr left ++ " " ++ tr
 translateExpr (CUnaryOp op expr) = translateOp (CUnary op) ++ "(" ++ translateExpr expr ++ ")"
 translateExpr (Literal l) = translateLiteral l
 translateExpr (Identifier s) = s
-translateExpr (CFunc name exprs) = name++"("++showStrTuple (fmap translateExpr exprs)++")"
+translateExpr (CFuncExpr name exprs) = name++"("++showStrTuple (fmap translateExpr exprs)++")"
 
 translateLiteral :: Literal -> String
 translateLiteral (IntLiteral x) = show x
@@ -149,6 +156,8 @@ countOperations (CProgram statements) = countStatements statements Map.empty
     countStatement :: CStatement -> Map COperator Int -> Map COperator Int
     countStatement (CAssignment _ expr) opCount = countExpression expr opCount
     countStatement (CVarDeclare _ _) opCount = opCount -- Ignore variable declarations for counting operations
+    countStatement (CFuncStmt name exprs) opCount =
+      foldr (\cur count -> countExpression cur count) opCount exprs
 
     countExpression :: CExpr -> Map COperator Int -> Map COperator Int
     countExpression (CBinaryOp op leftExpr rightExpr) opCount =
@@ -160,5 +169,5 @@ countOperations (CProgram statements) = countStatements statements Map.empty
       in countExpression expr newOpCount
     countExpression (Literal _) opCount = opCount
     countExpression (Identifier _) opCount = opCount
-    countExpression (CFunc name exprs) opCount =
+    countExpression (CFuncExpr name exprs) opCount =
       foldr (\cur count -> countExpression cur count) opCount exprs

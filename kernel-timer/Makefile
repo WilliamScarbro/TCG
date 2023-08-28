@@ -1,5 +1,5 @@
 CC = gcc
-OBJS = lib/timer.o lib/LPerm.o lib/Phi.o lib/Gamma.o lib/NTLib.o lib/Util.o lib/Monty.o lib/Multiply.o
+OBJS = lib/timer.o lib/LPerm.o lib/Phi.o lib/Gamma.o lib/NTLib.o lib/Util.o lib/Monty.o lib/Multiply.o lib/Generic.o
 H_FILES = src/timer.h src/LPerm.h src/Phi.h src/Gamma.h src/Util.h src/NTLib.h src/Mutliply.h
 FLAGS = -O3 
 SOURCES = $(wildcard src/gen/*.c) # match anything that looks like gen/*.c
@@ -26,6 +26,9 @@ lib/Monty.o: src/Monty.c
 	$(CC) $(FLAGS) -o $@ -c $^
 lib/Multiply.o: src/Multiply.c
 	$(CC) $(FLAGS) -o $@ -c $^
+lib/Generic.o: src/Generic.c
+	$(CC) $(FLAGS) -o $@ -c $^
+
 
 
 

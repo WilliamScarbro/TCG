@@ -5,11 +5,12 @@ import Algebra.NTT
 import Algebra.FField
 import Util.Util
 import Util.Logger
+import qualified Algebra.BetterAlgebra as BA
 
 data LOClass
-  = Diagonal Int (Int -> FF)
+  = Diagonal Int (Int -> Int)
   | Permutation Int (Int -> Int)
-  | Square Int (Int -> Int -> FF)
+  | Square Int (Int -> Int -> Int)
   | ITensor Int Int (LOClass) -- (LO \circledtimes I)
   | Partition Int [LOClass] -- m (size of each partition)
   | LOId Int
@@ -23,7 +24,7 @@ instance Show LOClass where
   show (LOId n) = "LOId "++show n
 
 -- not important, used to validate
-loc_to_lo :: LOClass -> LinearOp FF
+loc_to_lo :: LOClass -> LinearOp Int
 loc_to_lo (Diagonal n f) = linearOp n (\(i,j) -> if i==j then f i else 0)
 loc_to_lo (Permutation n f) = linearOp n (\(i,j) -> if j == f i then 1 else 0)
 loc_to_lo (Square n f) = linearOp n (uncurry f)
@@ -36,38 +37,44 @@ isDiag (Diagonal _ _) = True
 isDiag _ = False
 
 
-kernelToLOC :: Kernel -> Maybe LOClass
+kernelToLOC :: BA.ModPrimeMemo -> Kernel -> Maybe LOClass
 
-kernelToLOC (Phi n k d b p) =
+kernelToLOC mpm (Phi n k d b p) =
+  let
+    square = (Square k (phi_func_memo mpm k k d)) 
+  in
   if n==k then
-    return (Square n (phi_func n k d b p))
+    return square
   else
-    return (ITensor n (div n k) (Square k (phi_func k k d b p)))
-kernelToLOC (KInverse (Phi n k d b p)) =
+    return (ITensor n (div n k) square)
+kernelToLOC mpm (KInverse (Phi n k d b p)) =
+  let
+    square = (Square k (phi_inv_func_memo mpm k k d))
+  in
   if n==k then
-    return (Square n (phi_inv_func n k d b p))
+    return square
   else
-    return (ITensor n (div n k) (Square k (phi_inv_func k k d b p)))
+    return (ITensor n (div n k) square) 
 
-kernelToLOC (Gamma k m d b p) = return (Diagonal (k*m) (gamma_func k m d b p))
-kernelToLOC (KInverse (Gamma k m d b p)) = return (Diagonal (k*m) (gamma_inv_func k m d b p))
+kernelToLOC mpm (Gamma k m d b p) = return (Diagonal (k*m) (gamma_func_memo mpm k m d))
+kernelToLOC mpm (KInverse (Gamma k m d b p)) = return (Diagonal (k*m) (gamma_inv_func_memo mpm k m d))
 
-kernelToLOC (KT di dj dk) = return (Permutation (di*dj*dk) (mT_perm dj di dk)) -- applies inverse permutation (swaps di dj)
-kernelToLOC (KInverse (KT di dj dk)) = return (Permutation (di*dj*dk) (mT_perm di dj dk)) -- applies inverse permutation (swaps di dj)
+kernelToLOC _ (KT di dj dk) = return (Permutation (di*dj*dk) (mT_perm di dj dk)) -- applies inverse permutation (swaps di dj)
+kernelToLOC _ (KInverse (KT di dj dk)) = return (Permutation (di*dj*dk) (mT_perm dj di dk)) -- applies inverse permutation (swaps di dj)
 
-kernelToLOC (KL n k) = return (Permutation n (mL_perm n k))
-kernelToLOC (KInverse (KL n k)) = return (Permutation n (mL_perm n (div n k)))
+kernelToLOC _ (KL n k) = return (Permutation n (mL_perm n k))
+kernelToLOC _ (KInverse (KL n k)) = return (Permutation n (mL_perm n (div n k)))
 
-kernelToLOC (KId n) = return (LOId n)
-kernelToLOC (KInverse (KId n)) = return (LOId n)
+kernelToLOC _ (KId n) = return (LOId n)
+kernelToLOC _ (KInverse (KId n)) = return (LOId n)
 
-kernelToLOC (Kernel_Extend n k f) =
+kernelToLOC mpm (Kernel_Extend n k f) =
     let kers = sequence (do{ -- List
       i<-[0..k-1]; -- Int
       ker <- return (f i); -- Maybe Kernel
-      return (ker >>= kernelToLOC)}) in -- Maybe [LOCLass]
+      return (ker >>= (kernelToLOC mpm))}) in -- Maybe [LOCLass]
     kers >>= return . (Partition (div n k))
-kernelToLOC (KInverse (Kernel_Extend n k f)) =
+kernelToLOC mpm (KInverse (Kernel_Extend n k f)) =
     let kers = sequence (
           do -- List
             i<-[0..k-1] :: [Int]
@@ -75,18 +82,18 @@ kernelToLOC (KInverse (Kernel_Extend n k f)) =
             return (do
                        ker <- maybe_ker :: Maybe Kernel
                        inv_ker <- return (KInverse ker) :: Maybe Kernel
-                       lo <- kernelToLOC inv_ker :: Maybe LOClass
+                       lo <- (kernelToLOC mpm) inv_ker :: Maybe LOClass
                        return lo )) :: Maybe [LOClass]
     in
       kers >>= return . (Partition (div n k))
 
 
-kernelToLOC (Kernel_Repeat n k ker) = let kers = sequence [kernelToLOC ker |i<-[0..k-1]] in
+kernelToLOC mpm (Kernel_Repeat n k ker) = let kers = sequence [kernelToLOC mpm ker |i<-[0..k-1]] in
   kers >>= return . (Partition (div n k))
-kernelToLOC (KInverse (Kernel_Repeat n k ker)) =
+kernelToLOC mpm (KInverse (Kernel_Repeat n k ker)) =
   let
     inv_ker = KInverse ker
-    lops = sequence [kernelToLOC inv_ker |i<-[0..k-1]]
+    lops = sequence [kernelToLOC mpm inv_ker |i<-[0..k-1]]
   in
     lops >>= return . (Partition (div n k))
 
