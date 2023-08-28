@@ -68,10 +68,10 @@ kernelToVectorClass mpm (Kernel_Repeat n k ker) =
     foldl combineVectorClasses (return . head $ vcs) (tail vcs)
     
 combineVectorClasses :: Maybe (VectorClass a) -> (VectorClass a) -> Maybe (VectorClass a)
--- combineVectorClasses (Just (DiagonalVector 1 k1 pcc1))  (DiagonalVector 1 k2 pcc2) | k1 == k2 = return (DiagonalVector 1 k1 [pcc_concat (head pcc1) (head pcc2)])
+combineVectorClasses (Just (DiagonalVector 1 k1 pcc1))  (DiagonalVector 1 k2 pcc2) = return (DiagonalVector 1 (k1+k2) [pcc_concat (head pcc1) (head pcc2)])
+                                                                                    --  otherwise = Nothing
+-- combineVectorClasses (Just (DiagonalVector n1 k1 pcc1))  (DiagonalVector n2 k2 pcc2) | k1 == k2 = return (DiagonalVector (n1+n2) k1 (pcc1++pcc2))
 --                                                                                     | otherwise = Nothing
-combineVectorClasses (Just (DiagonalVector n1 k1 pcc1))  (DiagonalVector n2 k2 pcc2) | k1 == k2 = return (DiagonalVector (n1+n2) k1 (pcc1++pcc2))
-                                                                                    | otherwise = Nothing
 combineVectorClasses (Just (SquareVector n1 k1 pcc1))  (SquareVector n2 k2 pcc2) | k1 == k2 = return (SquareVector (n1+n2) k1 (pcc1++pcc2))
                                                                                 | otherwise = Nothing
 combineVectorClasses (Just (ITensorVector n1 k1 m1 pcc1)) (ITensorVector n2 k2 m2 pcc2) | k1 == k2 && m1 == m2 = return (ITensorVector (n1+n2) k1 m1 (pcc1++pcc2))

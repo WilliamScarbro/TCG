@@ -95,6 +95,7 @@ translateStmt depth (CLoop (start,end) stmts_func) =
     index_var = "i"++show depth
     stmts = join $ fmap (translateStmt 2) (stmts_func index_var)
     for_stmts =
+      --["#pragma omp parallel for", -- we assume all statements are independent
       ["for (int "++index_var++"="++show start++"; "++index_var++"<"++show end++"; "++index_var++"++){"]++
       stmts++
       ["}"]

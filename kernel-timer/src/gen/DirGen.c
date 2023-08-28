@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 #include "../Util.h"
 #include "../timer.h"
 #include "../Monty.h"

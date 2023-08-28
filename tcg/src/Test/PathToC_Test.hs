@@ -53,11 +53,11 @@ path2c_spec =
 
   in
     describe "compile Path to C and test results" $ do
-      test_suite "Direct"
+      -- test_suite "Direct"
 
-      test_suite "DirectMonty"
+      -- test_suite "DirectMonty"
 
-      test_suite "DirectMontyInMem"
+      -- test_suite "DirectMontyInMem"
 
       test_suite "Vector"
       

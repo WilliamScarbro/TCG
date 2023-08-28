@@ -234,6 +234,7 @@ includes extra =
   let standard =
         [ "#include <stdio.h>",
           "#include <stdlib.h>",
+          "#include <omp.h>",
           "#include \"../Util.h\"",
           "#include \"../timer.h\"" ]
       include_extra = fmap (\x -> "#include \""++x++"\"") extra in
