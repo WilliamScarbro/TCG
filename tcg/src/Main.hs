@@ -130,9 +130,24 @@ equiv_lib_test elib log_n =
     ((history,best),elapsedTime) <- timeCodeBlock $ do
       simulatedAnnealing id_guided_expand_annealing (timeCodeString "Gen") compilePath (elib,10,100) path
     only_times <- return (fmap snd history)
-    writeFile ("results/equiv_annealing_"++show log_n) ((show only_times)++"\n"
+    compiler <- getEnv "COMPILER"
+    writeFile ("results/"++compiler++"_equiv_annealing_"++show log_n) ((show only_times)++"\n"
                                                   ++(show best)++"\n"
                                                   ++"Time: "++show elapsedTime++"\n")
+
+over_compilers :: [String] -> IO a -> IO [a]
+over_compilers compilers task =
+  sequence . fmap set_compiler $ compilers
+  where
+    set_compiler compiler =
+      do
+        setEnv "COMPILER" compiler
+        task
+
+over_sizes :: [Int] -> (Int -> IO a) -> IO [a]
+over_sizes sizes task =
+  sequence . fmap task $ sizes
+  
 main :: IO () 
 --main = passEnvVars >> testPathPop new_hope_params 1000 
 --main = passEnvVars >> factorRun new_hope_logn 
@@ -141,7 +156,16 @@ main :: IO ()
 --  decompose_test 7
 
 --main = build_equiv_lib 10
-main = equiv_lib_test small_eq_lib 8
+main =
+  do
+    over_compilers ["VectorMonty","DirectMonty"] (
+      over_sizes [4..10] (
+          -- \s -> getEnv "COMPILER" >>= putStr >> putStr (" "++(show s)++"\n")
+            
+          equiv_lib_test small_eq_lib
+          )
+      )
+    return ()
 
   -- main = do
 --   sample <- random_sample_from_seiler 7 4
