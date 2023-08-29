@@ -5,7 +5,7 @@ if [[ -z $1 ]]; then
     exit
 fi
 
-pushd "/home/scarbro/CSU/TCG/kernel-timer" > /dev/null
+pushd "$TCG_HOME/kernel-timer" > /dev/null
 
 outfile=/tmp/kernel-test-results
 rm $1
