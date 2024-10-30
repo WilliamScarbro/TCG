@@ -73,10 +73,11 @@ get_nth_root mp n | mod ((get_mod mp)-1) n /= 0 = error ("get_nth_root: "++show 
   
     
 
-data ModPrimeMemo = MPM {prime :: Int, generator :: Int, n :: Int, nth_root :: Int, root_power_table :: [Int] } deriving Show
+data ModPrimeMemo = MPM {prime :: Int, generator :: Int, n :: Int, nth_root :: Int, root_power_table :: [Int] } deriving (Show,Eq)
 
 
-init_ModPrimeMemo p n =
+init_ModPrimeMemo p n | p == 0 = MPM 0 0 0 0 []
+                      | otherwise =
   let
     modPrime = init_ModPrime p
     gen = get_generator modPrime
@@ -90,6 +91,20 @@ init_ModPrimeMemo p n =
 
 mpm_to_mp mpm = ModPrime (prime mpm) (generator mpm)
 
+reduce :: ModPrimeMemo -> Int -> Int
+reduce mpm i | prime mpm == 0 = i
+             | otherwise = mod i (prime mpm)
+             
+reconcile_mpm_instances :: ModPrimeMemo -> ModPrimeMemo -> ModPrimeMemo
+reconcile_mpm_instances mpm0 mpm1 | (prime mpm0 == 0) = mpm1
+                                  | (prime mpm1 == 0) = mpm0
+                                  | mpm0 == mpm1 = mpm0
+                                  | otherwise =
+                                    if (prime mpm0 == 0) && (prime mpm1 == 0) then
+                                      error "mpm instances cannot be reconciled: both are dummy reductions"
+                                      else
+                                      error "mpm instances cannot be reconciled: they are not equal and neither is a dummy"
+                                  
 instance IntRing ModPrimeMemo where
   add mpm = add (mpm_to_mp mpm)
   sub mpm = sub (mpm_to_mp mpm)
@@ -105,6 +120,32 @@ instance IntField ModPrimeMemo where
 get_root_power :: ModPrimeMemo -> Int -> Int
 get_root_power mpm e = (root_power_table mpm) !! (mod e (n mpm))
 
+-----
+
+data FField = FF ModPrimeMemo Int deriving (Eq)
+
+instance Show FField where
+  show (FF mpm i) = show i
+
+ff_bin_op :: (ModPrimeMemo -> Int -> Int -> Int) -> FField -> FField -> FField
+ff_bin_op op (FF mpm0 i1) (FF mpm1 i2) =
+      let mpm = reconcile_mpm_instances mpm0 mpm1 in
+        FF mpm (op mpm i1 i2)
+                                       
+instance Num FField where
+  (+) = ff_bin_op add
+  negate (FF mpm i) = (FF mpm 0) - (FF mpm i)
+  (-) = ff_bin_op sub
+  (*) = ff_bin_op mult
+  abs = error "abs not defined for FField"
+  signum = error "abs not defined for FField"
+  fromInteger x = FF (init_ModPrimeMemo 0 1) 0 -- error "fromInteger not defined for FField"
+
+class DepType context a => HasFFieldEmb context a where
+  _get_ffield_emb :: context -> a -> FField
+
+get_ffield_emb :: HasFFieldEmb context a => context -> a -> FField
+get_ffield_emb context a = _get_ffield_emb context (depTypeChecked context a)
 
 ------
 
@@ -135,6 +176,7 @@ instance DepType ModPrimeMemo Int where
   is_instance _ _ = True
 
 instance HasIntEmb (DPair ModPrimeMemo ModPrimeMemo) IntTimesROU where
-  _get_int_emb (DPair _ mpm) (i,ru) = i * (get_int_emb mpm ru)
+  _get_int_emb (DPair mpm0 mpm1) (i,ru) =
+    let mpm = reconcile_mpm_instances mpm0 mpm1 in
+      i * (get_int_emb mpm ru)
   
-

@@ -5,7 +5,7 @@ import Algebra.NTT
 import Algebra.DepTypes
 import Algebra.RootField
 import Algebra.FField
-
+import Algebra.Util
 -- import Algebra.FField
 -- import Algebra.NTT
 -- import Util.Logger
@@ -297,7 +297,7 @@ apply (ProdFunc k0 m) (Prod n k bnf) | k0==k = Prod n k (BNF k (\i -> apply m (b
 apply (OExpFunc i m) (OExp n j x) | i==j = OExp n j (apply m x)
                                  | otherwise = throw (GE "apply: OExpFunc: size values do not match")
 apply (IExpFunc i m) (IExp n j x) | i==j = IExp n j (apply m x)
-                                 | otherwise = throw (GE "apply: OExpFunc: size values do not match")
+                                 | otherwise = throw (GE "apply: IExpFunc: size values do not match")
 apply (RotFunc m) (Rot n d x) = Rot n d (apply m x)
 apply IdR x = x
 apply (MInverse m) _ = throw (GE "apply: cannot apply inverse morphism") -- cannot apply Inverse Morphism
@@ -441,17 +441,17 @@ morphism_to_kernel_safe r m =
       error ("morphism_to_kernel: dimension mismatch "++show ker++" \n"++show r++"\n"++show m)
     else
       ker
-morphism_seq_to_kernels :: Ring -> [Morphism] -> [Kernel]
-morphism_seq_to_kernels r (m:ms) =
+      
+morphism_seq_to_kernels :: Bool -> Ring -> [Morphism] -> [Kernel]
+morphism_seq_to_kernels filter_id r (m:ms) =
   let
     next_r = apply m r
   in
-    if morph_is_identity m then
-      morphism_seq_to_kernels next_r ms
+    if filter_id && morph_is_identity m then
+      morphism_seq_to_kernels filter_id next_r ms
     else
-      (morphism_to_kernel_safe r m) : (morphism_seq_to_kernels next_r ms)
-
-morphism_seq_to_kernels r [] = []
+      (morphism_to_kernel_safe r m) : (morphism_seq_to_kernels filter_id next_r ms)
+morphism_seq_to_kernels _ r [] = []
 
 ----
 
@@ -600,21 +600,67 @@ loc2lo nr (LOId n) = nroot_mId nr n
 --   | Partition Int [LOClass] -- m (size of each partition)
 --   | LOId Int
 
-morphism_to_ker_seq :: Ring -> Morphism -> [Kernel]
-morphism_to_ker_seq r = morphism_seq_to_kernels r . extract_compose
+morphism_to_ker_seq :: Bool -> Ring -> Morphism -> [Kernel]
+morphism_to_ker_seq filter_id r = morphism_seq_to_kernels filter_id r . extract_compose
 
 morphism_to_lo_seq :: Ring -> Morphism -> [LinearOp FieldTimesROU]
-morphism_to_lo_seq r = fmap (loc2lo (NR (get_root r)) . kernelToLOC) . morphism_seq_to_kernels r . extract_compose
+morphism_to_lo_seq r = fmap (loc2lo (NR (get_root r)) . kernelToLOC) . morphism_seq_to_kernels True r . extract_compose
+
+morph_get_states :: Ring -> Morphism -> [Ring]
+morph_get_states ring morph =
+  let
+    ecm = extract_compose morph
+  in
+    scanl (\r m -> apply m r) ring ecm
 
 display_morph :: Ring -> Morphism -> IO ()
 display_morph r =
   putStr . foldr (\x y -> x++"\n"++y) "" . fmap show . morphism_to_lo_seq r
 
-check_eq_morph :: ModPrimeMemo -> Ring -> Morphism -> Morphism -> Bool
-check_eq_morph mpm r m1 m2 = lo1 == lo2
+check_eq_morph :: ModPrimeMemo -> Ring -> Morphism -> Morphism -> LinearOp Bool
+check_eq_morph mpm r m1 m2 | apply m1 r /= apply m2 r = error "morphisms are not syntactically equal on input ring"
+                           | otherwise = lo_pointwise_op (==) lo1 lo2
   where
-    lo1 = morphism_to_int_lo mpm r m1
-    lo2 = morphism_to_int_lo mpm r m2
+    lo1 = morphism_to_ff_lo mpm r m1
+    lo2 = morphism_to_ff_lo mpm r m2
     
-morphism_to_int_lo :: ModPrimeMemo -> Ring -> Morphism -> LinearOp Int
-morphism_to_int_lo mpm r m = fmap (\x -> mod x (prime mpm)) . mult_lo_seq . fmap (fmap (get_int_emb (DPair mpm mpm)))  $ morphism_to_lo_seq r m
+morphism_to_ff_lo :: ModPrimeMemo -> Ring -> Morphism -> LinearOp FField
+morphism_to_ff_lo mpm r m = mult_lo_seq . fmap (fmap (get_ffield_emb (DPair mpm mpm)))  $ morphism_to_lo_seq r m
+
+morphism_to_ff_lo_seq :: ModPrimeMemo -> Ring -> Morphism -> [LinearOp FField]
+morphism_to_ff_lo_seq mpm r m = fmap (fmap (get_ffield_emb (DPair mpm mpm)))  $ morphism_to_lo_seq r m
+
+pp_list :: Show a => [a] -> IO ()
+pp_list l = putStrLn . foldr (\x y -> x++"\n\n"++y) "" . fmap show $ l
+
+--- Testing
+
+base l = Base (2^l) 0 (2^l) 1
+mpm l = init_ModPrimeMemo 257 (2^l)
+
+check_eq_by_subseq :: ModPrimeMemo -> Ring -> Morphism -> Morphism -> [((Int,Int),(Int,Int))] -> [LinearOp Bool]
+check_eq_by_subseq mpm r m1 m2 sub_ind =
+  let
+    seq1 = morphism_to_ff_lo_seq mpm r m1
+    seq2 = morphism_to_ff_lo_seq mpm r m2
+  in
+    do
+      ((s1,e1),(s2,e2)) <- sub_ind
+      let sub1 = split s1 e1 seq1
+          sub2 = split s2 e2 seq2
+          res1 = mult_lo_seq sub1
+          res2 = mult_lo_seq sub2
+      return $ lo_pointwise_op (==) res1 res2
+      
+     
+    
+internally_consist :: ModPrimeMemo -> Ring -> Morphism -> [Int] -> Bool
+internally_consist mpm r m decomp =
+  let
+    seq1 = morphism_to_ff_lo_seq mpm r m
+    pairs = reverse . snd . foldl (\(last,so_far) cur -> (cur,(last,cur):so_far)) (0,[]) $ decomp
+    mult_and_reduce =  fmap (\x -> mod x (prime mpm)) . mult_lo_seq
+    subseq = fmap (\(s,e) -> mult_lo_seq . split s e $ seq1) pairs
+    
+  in
+    mult_lo_seq seq1 == mult_lo_seq subseq

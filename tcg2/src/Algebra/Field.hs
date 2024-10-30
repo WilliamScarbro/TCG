@@ -77,4 +77,17 @@ fxr_one :: NthRoots -> FieldTimesROU
 fxr_one (NR n) = (FOne,RU n 0)
 
 instance HasIntEmb (DPair ModPrimeMemo ModPrimeMemo) FieldTimesROU where
-  _get_int_emb (DPair mpm0 mpm1) (f,ru) = mod (get_int_emb mpm0 f * get_int_emb mpm1 ru) (prime mpm0)
+  _get_int_emb (DPair mpm0 mpm1) (f,ru) =
+    let mpm = reconcile_mpm_instances mpm0 mpm1 in
+      reduce mpm (get_int_emb mpm f * get_int_emb mpm ru)
+
+instance HasFFieldEmb ModPrimeMemo RootOfUnity where
+  _get_ffield_emb mpm ru = FF mpm (get_int_emb mpm ru)
+
+instance HasFFieldEmb (DPair ModPrimeMemo ModPrimeMemo) FieldTimesROU where
+  _get_ffield_emb (DPair mpm0 mpm1) (f,ru) =
+    let mpm = reconcile_mpm_instances mpm0 mpm1 in
+      FF mpm (reduce mpm (get_int_emb mpm f * get_int_emb mpm ru))
+
+instance HasFFieldEmb ModPrimeMemo Int where
+  _get_ffield_emb mpm n = FF mpm (reduce mpm n)

@@ -38,5 +38,5 @@ class DepType context a => HasIntEmb context a where
 get_int_emb :: HasIntEmb context a => context -> a -> Int
 get_int_emb context a = _get_int_emb context (depTypeChecked context a)
 
-  
+
 data Zero = Zero deriving (Show,Eq,Ord)

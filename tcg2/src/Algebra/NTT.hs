@@ -37,6 +37,7 @@ vecAsList (Vec m) =
 linearOp :: Integral a => a -> ((Int,Int)->b) -> LinearOp b
 linearOp n f = LO (matrix (fromIntegral n) (fromIntegral n) (\(x,y) -> f ((x-1),(y-1))))
 
+vector n f = Vec (matrix n 1 (\(x,y) -> f (x - 1)))
 
 -- haskell matrices are 1 indexed :\
 get_el :: Int -> Int -> LinearOp a -> a
@@ -58,6 +59,10 @@ lo_cmp :: (Matrix a -> Matrix a -> Bool) -> (LinearOp a -> LinearOp a -> Bool)
 lo_cmp op (LO x) (LO y) = op x y
 
 
+instance Foldable LinearOp where
+  foldMap f (LO m) = foldMap f m
+  foldr f b (LO m) = foldr f b m
+  
 instance Show a => Show (LinearOp a) where
   show (LO m) = show m
 
@@ -68,14 +73,17 @@ instance Functor LinearOp where
   -- (a->b) -> (f a->f b) = 
   fmap f (LO m) = LO (fmap f m)
 
+instance Functor Vector where
+  fmap f (Vec m) = Vec (fmap f m)
+  
 instance (Num a) => Num (LinearOp a) where
   (+) = lo_op (+)
   negate = fmap negate
   (-) = lo_op (-)
   (*) = lo_op (*)
-  abs = id
-  signum x = 1
-  fromInteger x = linearOp 1 (\(z,y) -> fromInteger x)
+  abs = error "abs not defined for LinearOp" 
+  signum x = error "signum not defined for LinearOp"
+  fromInteger x = error "fromInteger not defined for LinearOp" -- linearOp 1 (\(z,y) -> fromInteger x)
 
 instance Eq a => Eq (LinearOp a) where
   (==) = lo_cmp (==)
@@ -89,6 +97,11 @@ lopToInteger context lo = fmap (get_int_emb context) lo
 mm :: Num a => LinearOp a -> LinearOp a -> LinearOp a
 mm (LO m) (LO m2) | nrows m /= ncols m2 = error "mm: dimension mismatch"
                   | otherwise = LO (m * m2)
+
+my_mm :: Num a => LinearOp a -> LinearOp a -> LinearOp a
+my_mm (LO m) (LO m2) | ncols m /= nrows m2 = error "mm: dimension mismatch"
+                  | otherwise =
+  linearOp (ncols m) (\(x,y) -> foldr (+) 0 [(get_el x i (LO m)) * (get_el i y (LO m2)) | i<-[0..(ncols m)-1]])
 
 mv :: Num a => LinearOp a -> Vector a -> Maybe (Vector a)
 mv (LO m) (Vec v) | ncols m /= nrows v = Nothing
@@ -110,7 +123,10 @@ point_mult (Vec v1) (Vec v2) | nrows v1 /= nrows v2 = Nothing
                              | ncols v1 /= 1 =
                                return (Vec (matrix 1 (ncols v1) (\(i,j) -> (getElem 1 j v1)*(getElem 1 j v2))))
                                    
-                                               
+
+mm_exp :: Num a => Int -> LinearOp a -> LinearOp a
+mm_exp n lo = foldr (mm) lo [lo |i<-[1..n-1]]
+
 tensor :: (a -> a -> a) -> LinearOp a -> LinearOp a -> LinearOp a
 tensor mult l1 l2 =
   let
@@ -139,9 +155,16 @@ loParallel zero l1 l2 =
                                get_el (x-n1) (y-n1) l2
                              else
                                zero))
-
+ 
 mult_lo_seq :: Num a => [LinearOp a] -> LinearOp a
-mult_lo_seq (lo:los) = foldl (\x y -> mm y x) lo los
+mult_lo_seq (lo:[]) = lo
+mult_lo_seq (lo:los) = foldl mm lo los
+
+
+lo_pointwise_op :: (a -> b -> c) -> LinearOp a -> LinearOp b -> LinearOp c
+lo_pointwise_op f lo1 lo2 | size lo1 /= size lo2 = error "pointwise_op: dim mismatch"
+                       | otherwise = linearOp (size lo1) (\(x,y) -> f (get_el x y lo1) (get_el x y lo2))
+                       
 ---------
    
 mId :: a -> a -> Int -> LinearOp a
@@ -175,10 +198,9 @@ mL typ n k = perm typ n (mL_perm n k)
 mNTT :: Int -> LinearOp RootOfUnity
 mNTT n = linearOp n (\(i,j) -> ru_init n (i*j))
  
-mNTT_inv :: IntField a => a -> Int -> LinearOp IntTimesROU
-mNTT_inv field n =
-    let n_inv=field_inverse field n in
-      linearOp n (\(i,j) -> (n_inv, ru_init n (-1*i*j)))
+mNTT_inv ::  Int -> LinearOp FieldTimesROU
+mNTT_inv n =
+  linearOp n (\(i,j) -> (FInv (FIntConst n), ru_init n (-1*i*j)))
 
 phi_func_memo :: Int -> Int -> Int -> Int -> Int -> Int -> FieldTimesROU
 phi_func_memo n k d b =
@@ -186,21 +208,21 @@ phi_func_memo n k d b =
     rd = mod d b
     m = div n k
   in
-    (\x y ->
+    (\y x ->
        if mod x m == mod y m then
          (FOne,ru_init b (div ((rd+(div x m)*b)*(div y m)) k))
          else
          fxr_zero (NR b))
 
 
-phi_inv_func_memo :: IntField a => a -> Int -> Int -> Int -> Int -> Int -> Int -> FieldTimesROU
-phi_inv_func_memo field n k d b =
+phi_inv_func_memo :: Int -> Int -> Int -> Int -> Int -> Int -> FieldTimesROU
+phi_inv_func_memo n k d b =
   let
     rd = mod d b
     m = div n k
     k_inv = FInv (FIntConst k)
   in
-    (\x y ->
+    (\y x ->
        if mod x m == mod y m then
          (k_inv,ru_init b (-(div ((rd+(div x m)*b)*(div y m)) k)))
          else
